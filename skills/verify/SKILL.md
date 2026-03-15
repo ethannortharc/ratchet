@@ -20,15 +20,24 @@ ALL verification commands must run within the resolved workspace directory.
 
 On starting verification: set intent status to `agent_running` in state.yaml.
 
-## Verification Order
+## Verification Order (Multi-Level)
 
-### 1. Auto Verifiers (agent track)
-Execute check commands, capture exit codes AND raw output (stdout + stderr). Pass = 0, fail = non-zero.
-If check fails due to missing tool: record as `skipped`, suggest installation.
+Verification runs in levels, from fastest/simplest to most comprehensive:
+
+### Level 1: Static Checks (agent track)
+Build, lint, type-check. Catches syntax errors and obvious issues.
+```bash
+# Examples:
+npm run build          # Compiles
+npm run lint           # Linting
+tsc --noEmit           # Type checking
+```
+
+### Level 2: Unit Tests (agent track)
+Execute check commands from test suite, capture exit codes AND raw output (stdout + stderr). Pass = 0, fail = non-zero.
 
 **Capture raw output** for proof of work:
 ```yaml
-# Store in review_log alongside pass/fail
 raw_output: |
   PASS src/scoring.test.ts (0.8s)
     ✓ type 1 full score → primary type 1
@@ -37,6 +46,33 @@ raw_output: |
 ```
 
 Use test files from `.ratchet/test-suite/` when available (check manifest.yaml).
+
+### Level 3: Integration / Smoke Tests (agent track)
+**Actually run the artifact and verify basic functionality.** This is the level that catches encoding errors, broken buttons, pages not rendering — issues that unit tests miss.
+
+The approach depends on what the project produces:
+
+| Artifact | How to verify | Tool |
+|----------|--------------|------|
+| Web app | Start dev server + Playwright tests | Playwright |
+| CLI | Run with known inputs, check output | shell |
+| API | Start server + curl endpoints | curl |
+| Library | Run example/integration code | runtime |
+| Document | Validate structure, completeness | shell + LLM |
+
+**If Level 3 tools are missing:** Record as `skipped` with `missing_capability` set. Suggest installation. Do NOT silently downgrade to human review — explicitly flag that basic functionality verification was skipped.
+
+```yaml
+# Example Level 3 for web project:
+# 1. Start dev server in background
+# 2. Wait for server ready
+# 3. Run Playwright tests: page loads, navigation works, buttons clickable, no console errors
+# 4. Kill dev server
+```
+
+**Key rule: Basic functionality issues must be caught at Level 3, not by human review.** If an encoding error, broken button, or navigation failure reaches the human, the verification system has failed.
+
+If check fails due to missing tool: record as `skipped`, suggest installation.
 
 ### 2. AI Review Verifiers (agent track)
 For each `verifier: ai_review` constraint:
@@ -185,3 +221,6 @@ These appear in `/ratchet:review` for human approval.
 4. **Propose constraints you discover.** Don't silently fix things — capture them for the Intent Spec.
 5. **Capture raw output.** Every verification result must include the actual output for proof of work.
 6. **Stay in workspace.** All operations within the registered workspace path.
+7. **Run all three levels.** Static → Unit → Integration. Don't stop at unit tests. If Level 3 tools are available, USE them.
+8. **Auto-upgrade suggestions.** When queuing a human-track item, check: could this be auto-verified with a tool? If yes, set `could_be_auto: true` and `missing_capability` with the tool name. Suggest the upgrade in `/ratchet:review`.
+9. **Basic functionality = agent responsibility.** Encoding errors, broken buttons, pages not rendering, navigation failures — these are NEVER acceptable as human review items. They must be caught by Level 3 integration tests.

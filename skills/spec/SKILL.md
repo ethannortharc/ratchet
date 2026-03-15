@@ -89,9 +89,22 @@ which docker 2>/dev/null && docker --version
 which git 2>/dev/null && git --version
 ```
 
-### 2.2 Environment Negotiation (be aggressive)
+### 2.2 Environment Negotiation (Maximum Coverage Principle)
 
-Calculate what COULD be auto-verified with additional tools:
+The agent's goal is to **maximize automated verification coverage** — leave as little as possible to human review. This applies to ALL project types.
+
+**Step A: Identify what "running the artifact" looks like for this project:**
+
+| Project produces | How to verify it actually works | Tool needed |
+|-----------------|-------------------------------|-------------|
+| Web app/site | Start dev server + browser tests | Playwright |
+| CLI tool | Run with test inputs, check output | shell (built-in) |
+| API service | Start server + call endpoints | curl (built-in) |
+| Library/package | Run example code, import tests | project runtime |
+| Document/report | Validate structure, format, length | shell + LLM |
+| Creative writing | Check consistency, format, word count | LLM |
+
+**Step B: Calculate coverage with and without additional tools:**
 
 ```
 Current auto-verification coverage: X%
@@ -99,9 +112,18 @@ With recommended tools: Y%
 
 Strongly recommended:
   ⬜ [tool] — unlocks N auto-verifications
+     What it enables: [e.g. "end-to-end browser tests — catches rendering errors, broken buttons, navigation issues"]
      Install: [one-line command]
      I can install this myself: [yes/no]
+
+Without these tools, the following constraints will require HUMAN verification
+instead of automated testing:
+  - [constraint that could be auto but lacks tooling]
 ```
+
+**Step C: Be aggressive.** If a tool can be installed by the agent, offer to install it immediately. The goal is to push `human` track items toward `auto` track wherever possible. Every constraint left on human track is a potential delay.
+
+**Key rule: "Basic functionality" must ALWAYS be auto-verifiable.** For any project that produces a runnable artifact, the spec MUST include invariants that verify the artifact actually runs and basic interactions work. These are NOT optional — they are industry-standard baseline tests that catch encoding errors, broken buttons, navigation failures, etc.
 
 ### 2.3 Generate Constraints
 
@@ -114,6 +136,28 @@ Using the user's intent + Step 1 decisions + industry knowledge (read `reference
    - `test_method`: detailed description of what tests should cover (scenarios, edge cases, expected behaviors). This is what the agent reads when generating the test suite.
    - `tools_required`: structured list with id, install hint, and agent_can_install flag
    - `ratchet_metric`: quantified progress indicator
+
+**Multi-level test_method (mandatory for software projects, encouraged for all):**
+
+Every constraint's `test_method` should include the highest verification level achievable:
+
+```
+Level 1 — Static: build, lint, type-check (catches syntax/type errors)
+Level 2 — Unit: isolated function tests (catches logic errors)
+Level 3 — Integration: actually run the artifact and verify behavior (catches rendering, interaction, wiring errors)
+```
+
+Example for a web project constraint "results page displays correctly":
+```yaml
+test_method: |
+  Level 1: TypeScript compiles without errors
+  Level 2: Unit test — scoring function returns correct type for known inputs
+  Level 3: Integration — start dev server, navigate to results page after completing quiz,
+           verify: page renders without errors, all 9 type descriptions visible,
+           primary type highlighted, retest button clickable, share button functional
+```
+
+**The agent MUST auto-generate Level 3 tests when the environment supports it.** Basic functionality issues (broken buttons, encoding errors, pages not rendering) should NEVER reach human review — they are auto-verifiable with the right tools.
 
 ### 2.4 Generate agent_guidance
 
@@ -283,3 +327,5 @@ When this skill is invoked:
 5. **Under 5 minutes** for the entire process (Steps 1-3). Step 4 runs automatically.
 6. **agent_guidance replaces exploration_hints.** Write a natural language prompt, not a flat list.
 7. **Register workspace.** Every intent gets a locked absolute path.
+8. **Maximum coverage.** Aggressively request tools to maximize auto-verification. Basic functionality (runs, renders, navigates, buttons work) MUST be auto-verifiable. If a tool is missing, tell the user what it unlocks and offer to install it.
+9. **Multi-level test_method.** For every constraint, push to the highest verification level the environment supports (static → unit → integration).

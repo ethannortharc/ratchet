@@ -26,9 +26,16 @@ Read `~/.config/ratchet/review_queue.yaml`. If empty, report "No pending reviews
    Constraint: [claim]
    📎 [artifact path]
 
+🔧 Auto-upgrade opportunities ([N] items)
+   These items are currently human-track but COULD be auto-verified:
+   1. [prism] QD-03: "responsive layout" — install Playwright to auto-verify
+   2. [note-cli] INV-05: "CLI outputs valid JSON" — can be auto-tested with jq
+
 💡 Agent Suggestions ([N] items)
    1. [prism]: [proposed constraint] — [rationale]
 ```
+
+**Auto-upgrade section**: For any review item where `could_be_auto: true`, show what tool is missing and what it would unlock. If the user approves, install the tool and convert the constraint from human-track to agent-track.
 
 ### Step 3: Process Reviews
 
@@ -73,9 +80,22 @@ Human says              → Agent converts to
 
 Not everything can be converted. "Story is boring" has no good proxy. That's fine — add direction to `agent_guidance` ("try increasing conflict density, add a plot twist in ch3") and keep the quality dimension as human-track.
 
+## Direct Feedback (outside /ratchet:review)
+
+Users don't need to use this command to give feedback. When a user reports an issue directly in conversation (e.g., "the results page has encoding errors"), the agent should:
+
+1. Run the feedback conversion engine immediately
+2. Determine if this is a basic functionality issue (should have been auto-caught) or a subjective quality issue
+3. For basic functionality: fix immediately + add as auto-verifiable constraint + add integration test
+4. For quality issues: convert to constraint if possible, update Intent Spec, trigger new iteration
+
+This is equivalent to processing a review inline — same engine, just without the formal queue.
+
 ## Rules
 1. **Always attempt feedback conversion.** Even partial conversion is valuable.
 2. **Show conversion before applying.** Human must confirm the objective version captures their intent.
 3. **High-priority items first.** They're blocking agent work.
 4. **Don't overwhelm.** If >10 items in queue, show top 5 and ask if user wants to see rest.
 5. **Show intent ID and workspace** for every review item.
+6. **Surface auto-upgrade opportunities.** Every `could_be_auto` item should come with a tool recommendation.
+7. **Basic functionality bugs = agent failure.** If a human finds a broken button or encoding error, acknowledge this should have been caught automatically, fix it, and add an integration test to prevent recurrence.

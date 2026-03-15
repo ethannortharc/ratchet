@@ -1,6 +1,6 @@
 {
   "name": "ratchet",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Intent-driven execution with ratchet optimization. Workspace isolation, lifecycle management, dual-track verification, proof of work, autonomous iteration.",
   "author": {
     "name": "Ethan"

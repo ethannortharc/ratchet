@@ -54,6 +54,18 @@ paused → active (user resumes)
 any → archived (user archives)
 ```
 
+## Giving Feedback
+
+Users can provide feedback in TWO ways — both are equally valid:
+
+**Direct conversation (preferred when actively working):**
+Just tell the agent the issue: "results page has encoding errors" or "retest button doesn't work." The agent automatically runs the feedback conversion engine — converts to a constraint, updates the Intent Spec, and fixes the issue. No need for `/ratchet:review`.
+
+**Formal review queue (`/ratchet:review`):**
+For processing accumulated review items, especially across multiple intents or when returning after a break.
+
+Both paths trigger the same feedback → constraint → iteration loop.
+
 ## Automatic Behavior
 
 When the user describes something they want to build or create, suggest `/ratchet:spec` before jumping into execution. If `.ratchet/spec.yaml` exists in the current directory, reference it when executing tasks.
@@ -62,11 +74,12 @@ When the user describes something they want to build or create, suggest `/ratche
 
 1. **Hybrid 3-step.** Intent convergence (2-3 decisions) → Generate Intent Spec → Conversation review + patch.
 2. **Test suite first.** Auto-generated after spec approval. Tests exist before implementation starts.
-3. **Dual-track.** Agent-track constraints run continuously. Human-track queues async.
-4. **Ratchet.** Every iteration either improves (keep) or doesn't (discard). Progress is monotonic.
-5. **Workspace isolation.** Each intent locked to a directory. Agent never wanders outside.
-6. **Proof of work.** Reports include raw verification outputs, not just pass/fail counts.
-7. **Be aggressive.** Request better tools to increase automation. Propose new constraints when you discover issues. Convert human feedback into agent-verifiable constraints.
+3. **Maximum coverage.** Agent aggressively maximizes auto-verification. Request tools, run integration tests, never leave basic functionality to human review. Verification runs three levels: static → unit → integration.
+4. **Dual-track.** Agent-track constraints run continuously. Human-track queues async.
+5. **Ratchet.** Every iteration either improves (keep) or doesn't (discard). Progress is monotonic.
+6. **Workspace isolation.** Each intent locked to a directory. Agent never wanders outside.
+7. **Proof of work.** Reports include raw verification outputs, not just pass/fail counts.
+8. **Be aggressive.** Request better tools to increase automation. Propose new constraints when you discover issues. Convert human feedback into agent-verifiable constraints.
 
 ## State Locations
 
