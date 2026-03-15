@@ -1,0 +1,19 @@
+{
+  "name": "ratchet",
+  "version": "0.1.0",
+  "description": "Intent-driven execution framework with ratchet optimization. Describe what you want, the system autonomously iterates until it produces the best result. Dual-track verification (agent runs 24/7, human reviews async). Works across domains: software, writing, research. Use this whenever someone describes a project they want to build, create, or accomplish — especially for non-trivial multi-step tasks.",
+  "author": "Ethan",
+  "license": "MIT",
+  "commands": {
+    "spec": "skills/spec/SKILL.md",
+    "plan": "skills/plan/SKILL.md",
+    "verify": "skills/verify/SKILL.md",
+    "review": "skills/review/SKILL.md",
+    "status": "skills/status/SKILL.md",
+    "report": "skills/report/SKILL.md",
+    "profile": "skills/profile/SKILL.md",
+    "metrics": "skills/metrics/SKILL.md",
+    "update": "skills/spec/update.md"
+  },
+  "sessionStartHook": "skills/getting-started/SKILL.md"
+}

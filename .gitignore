@@ -1,0 +1,15 @@
+# Project state files (generated at runtime, not part of plugin)
+.ratchet/
+review_queue.yaml
+state.yaml
+global_metrics.yaml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
