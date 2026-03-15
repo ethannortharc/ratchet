@@ -6,7 +6,7 @@ description: Run three-tier verification with ratchet optimization loop. Execute
 # Verify — Three-Tier Verification + Ratchet Loop
 
 ## Prerequisites
-`.ratchet/spec.yaml` must exist. Artifacts to verify must be present.
+`.ratchet/spec.yaml` (Intent Spec) must exist. Artifacts to verify must be present.
 
 ## Verification Order
 
@@ -17,6 +17,7 @@ If check fails due to missing tool: record as `skipped`, suggest installation.
 ### 2. AI Review Verifiers (agent track)
 For each `verifier: ai_review` constraint:
 - Load artifact + rubric + project context
+- Use the constraint's `test_method` to guide evaluation focus
 - Evaluate critically (don't rubber-stamp)
 - Produce: score, pass/fail, justification, specific issues
 
@@ -25,8 +26,9 @@ Use this review prompt template:
 CONSTRAINT: [claim]
 RUBRIC: [rubric text]
 THRESHOLD: [minimum score]
+TEST METHOD: [test_method — what specifically to evaluate]
 ARTIFACT: [content]
-CONTEXT: [spec excerpts, settings docs]
+CONTEXT: [Intent Spec excerpts, settings docs]
 
 Evaluate honestly. Output:
 SCORE: [number]
@@ -56,26 +58,26 @@ When agent-track verification fails AND ratchet is enabled:
 ```
 best_score = current_composite_score
 for attempt in range(budget):
-    
+
     # Feed failure details as context
     feedback = format_failures(failed_constraints)
     result = re_execute(wp, additional_context=feedback)
-    
+
     # Re-verify agent-track only
     scores = verify_agent_track(result)
     composite = calculate_composite(scores)
-    
+
     if all_agent_pass(scores):
         git_commit("wp-{id}: all agent verifications passed")
         mark_status("agent_complete")
         queue_human_track_items()
         break
-    
+
     elif composite > best_score:
         git_commit("wp-{id}: improved {best_score:.2f} → {composite:.2f}")
         best_score = composite
         # Continue iterating
-    
+
     else:
         git_reset()
         # Try different approach next iteration
@@ -119,7 +121,7 @@ Append to `.ratchet/review_log.yaml`:
 
 ## Constraint Discovery
 
-During execution and verification, if you discover issues NOT covered by any spec constraint:
+During execution and verification, if you discover issues NOT covered by any Intent Spec constraint:
 
 Append to `.ratchet/suggested_constraints.yaml`:
 ```yaml
@@ -131,6 +133,8 @@ Append to `.ratchet/suggested_constraints.yaml`:
   proposed_track: agent | human
   proposed_verifier: auto | ai_review | human
   proposed_check: string
+  proposed_test_method: string
+  proposed_tools_required: [string]
   urgency: high | normal
   action_taken: string  # What you did as a temporary fix
 ```
@@ -141,4 +145,4 @@ These appear in `/ratchet:review` for human approval.
 1. **Never block on human-track items.** Queue them and continue.
 2. **Always classify failure reason.** This is non-negotiable for the feedback loop.
 3. **Be genuinely critical in ai_review.** Finding real issues early saves iteration cycles.
-4. **Propose constraints you discover.** Don't silently fix things — capture them for the spec.
+4. **Propose constraints you discover.** Don't silently fix things — capture them for the Intent Spec.

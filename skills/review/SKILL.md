@@ -36,22 +36,22 @@ For each item the user reviews:
 
 **Revise**: Ask for specific feedback. Then:
 1. Try to convert feedback into an agent-verifiable constraint
-2. Show the conversion: "You said '[subjective feedback]'. I'll add this constraint: '[objective version]'. Does this capture it?"
-3. If confirmed: add to spec, increment version, trigger new iteration
+2. Show the conversion: "You said '[subjective feedback]'. I'll add this constraint: '[objective version]' with test_method: '[how to test it]'. Does this capture it?"
+3. If confirmed: add to Intent Spec (with test_method + tools_required), increment version, trigger new iteration
 4. If not captured well: keep as human-track, add exploration_hint
 
-**Fail**: Ask what's fundamentally wrong. Determine if it's a spec issue (need to change direction) or an execution issue (need to try harder in same direction).
+**Fail**: Ask what's fundamentally wrong. Determine if it's an Intent Spec issue (need to change direction) or an execution issue (need to try harder in same direction).
 
 ### Step 4: Process Agent Suggestions
 
 For each suggested constraint:
-- Show the suggestion with rationale
-- Options: Adopt (add to spec) | Ignore | Modify then adopt
+- Show the suggestion with rationale and proposed test_method
+- Options: Adopt (add to Intent Spec) | Ignore | Modify then adopt
 - Adopted suggestions increment spec version
 
 ### Step 5: Update State
 
-Remove processed items from queue. Update project state. If spec changed, log in changelog.
+Remove processed items from queue. Update project state. If Intent Spec changed, log in changelog.
 
 ## The Feedback Conversion Engine
 

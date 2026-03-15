@@ -17,21 +17,21 @@ description: Display multi-project dashboard showing all active Ratchet projects
 🔧 Ratchet — [N] active projects
 
 📦 project-a [software] — agent running
-   Progress: 4/6 WPs complete
+   Progress: 4/6 WPs complete (test suite ✅)
    Current: wp-05 iter 3, score 0.72 → 0.85
    Estimated: ~40 min remaining
-   
+
 📖 project-b [creative_writing] — awaiting review
    Progress: settings + outline done, writing ch1-5
    Pending: 2 human reviews (1 blocking)
-   
+
 ✅ project-c [research] — completed
    Completed: 2h ago, all constraints passed
-   
+
 📊 Summary:
    Pending reviews: 3 (1 high priority)
    Auto-verification coverage: 82% avg
-   
+
 💡 Suggested next action:
    → /ratchet:review to process 1 blocking review
 ```

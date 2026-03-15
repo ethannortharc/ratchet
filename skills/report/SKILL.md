@@ -1,6 +1,6 @@
 ---
 name: report
-description: Generate iteration reports (after each ratchet round) and project reports (at completion or on demand). Shows optimization trajectory, key decisions, agent discoveries, and actionable insights. Like autoresearch's results.tsv but richer. Use after iterations complete, at project end, or when user asks "what happened", "show me results", "generate report".
+description: Generate iteration reports (after each ratchet round) and project reports (at completion or on demand). Shows optimization trajectory, key decisions, agent discoveries, and actionable insights. Use after iterations complete, at project end, or when user asks "what happened", "show me results", "generate report".
 ---
 
 # Report — Iteration & Project Reports
@@ -14,12 +14,13 @@ Save to `.ratchet/reports/iter-{NNN}.md`:
 ```markdown
 ## Iteration Report — [project], Round [N]
 Time: [start] → [end] ([duration], [human interventions] human interactions)
-Spec version: v[N]
+Intent Spec version: v[N]
 Trigger: [what started this round — initial / human feedback / spec update]
 
 ### Progress
 | WP | Iterations | Score | Δ | Status |
 |----|-----------|-------|---|--------|
+| wp-01 (test suite) | 1 | 1.0 | — | ✅ done |
 | wp-03 | 4 | 0.72 → 0.95 | +0.23 | ✅ agent pass |
 | wp-04 | 3 | 0.60 → 0.88 | +0.28 | ✅ agent pass |
 | wp-05 | 5 | 0.45 → 0.70 | +0.25 | ⚠️ budget exhausted |
@@ -50,14 +51,14 @@ Save to `.ratchet/reports/final.md`:
 ## Project Report — [project]
 Total time: [duration] across [N] days
 Human total investment: ~[minutes] ([N] interactions)
-Spec versions: [N] (v1 → v[N])
+Intent Spec versions: [N] (v1 → v[N])
 Total ratchet iterations: [N]
 
 ### Optimization Trajectory
 Round 1: composite [X] → Round 2: [Y] → ... → Final: [Z]
 [Or if possible, generate a simple ASCII chart]
 
-### Spec Evolution
+### Intent Spec Evolution
 v1 → v2: [change + trigger]
 v2 → v3: [change + trigger]
 Source breakdown: [N] from human, [N] from agent suggestions, [N] from review feedback

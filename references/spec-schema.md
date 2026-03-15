@@ -1,4 +1,4 @@
-# spec.yaml Schema Reference
+# Intent Spec (spec.yaml) Schema Reference
 
 ## Complete Schema
 
@@ -40,7 +40,9 @@ invariants:
     confidence: string        # high | medium | low
     verifier: string          # auto | ai_review | human
     requires: [string]        # Capability IDs
-    check: string
+    check: string             # Command or method to verify
+    test_method: string       # Detailed test scenarios for agent (what to test, edge cases, expected behaviors)
+    tools_required: [string]  # Specific tools needed (e.g. vitest, pytest, golangci-lint)
     ratchet_metric: string    # Quantified progress (e.g. "pass_rate", "score")
     fallback_verifier: string
     fallback_check: string
@@ -53,6 +55,8 @@ quality_dimensions:
     verifier: string
     rubric: string            # 5/3/1 scoring
     threshold: number
+    test_method: string       # How to evaluate this dimension (rubric application, artifacts to review)
+    tools_required: [string]  # Tools needed for evaluation
     ratchet_metric: string
 
 preferences:
@@ -87,6 +91,48 @@ profile_applied:
 ## Verifier Priority
 
 `auto` > `ai_review` > `human` — always use the most automated option available.
+
+## test_method Guidelines
+
+The `test_method` field describes WHAT to test in enough detail for the agent to generate a test suite. It is NOT the check command — it's the test design.
+
+Examples:
+
+```yaml
+# Invariant — scoring logic
+test_method: |
+  Unit tests covering:
+  - All perfect-score scenarios (one type maxed out)
+  - Tied scores with tiebreak logic
+  - Boundary cases (minimum/maximum inputs)
+  - Invalid input handling (missing answers, out-of-range values)
+
+# Quality dimension — description quality
+test_method: |
+  AI review evaluates each type description against rubric:
+  - Accuracy: matches established definitions
+  - Tone: empathetic, non-judgmental
+  - Actionability: includes growth suggestions
+  - Length: 150-300 words per type
+
+# Invariant — page load
+test_method: |
+  Integration test:
+  - Page renders without errors
+  - All critical elements present (header, question area, progress bar)
+  - No console errors
+```
+
+## tools_required Guidelines
+
+List specific tools the constraint needs. These are deduplicated into `environment.capabilities` during spec generation.
+
+```yaml
+tools_required: [vitest]           # JS/TS testing
+tools_required: [pytest, mypy]     # Python testing + type checking
+tools_required: [golangci-lint]    # Go linting
+tools_required: []                 # ai_review or human — no tools needed
+```
 
 ## Ratchet Metric Guidelines
 

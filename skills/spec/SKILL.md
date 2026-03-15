@@ -1,25 +1,71 @@
 ---
 name: spec
-description: Transform intent into a structured, verifiable specification (spec.yaml) with dual-track constraints and ratchet configuration. Use whenever the user describes something they want to build, create, write, or accomplish. Generates complete specs with industry knowledge, auto-assigns verification tracks (agent/human) and verifier types (auto/ai_review/human) based on environment capabilities. Always use this before implementation for non-trivial tasks.
+description: Transform intent into a structured, verifiable Intent Spec (spec.yaml) through a hybrid 3-step flow. Step 1 converges on high-level decisions, Step 2 generates the full Intent Spec, Step 3 reviews section-by-section in conversation. Use whenever the user describes something they want to build, create, write, or accomplish.
 ---
 
-# Spec — Intent Formalization
+# Spec — Intent Formalization (Hybrid 3-Step)
 
-## Workflow
+## Overview
 
-### Step 1: Load Profile
+The spec flow has three distinct steps. The entire process should take under 5 minutes.
+
+```
+Step 1: Intent Convergence (~1 min)
+  → 2-3 high-level "what" decisions via multiple choice
+Step 2: Generate Intent Spec (~2 min)
+  → Full spec.yaml using decisions + industry knowledge
+Step 3: Conversation Review (~2 min)
+  → Section-by-section summary, natural language feedback, incremental patch
+```
+
+---
+
+## Step 1: Intent Convergence
+
+The goal is to settle high-level decisions that fork the entire spec. Ask about **what**, not **how**.
+
+### 1.1 Load Profile
 
 Check `~/.config/ratchet/profile.yaml`. If exists, load preferences. If not, proceed with defaults and suggest `/ratchet:profile` afterward.
 
-### Step 2: Analyze Intent
+### 1.2 Analyze Intent
 
-The user provides intent — one sentence to several paragraphs.
+From the user's description, identify:
+- Project type: `software` | `creative_writing` | `research` | `design` | `general`
+- 2-3 decisions that would fundamentally change the spec
 
-1. Identify project type: `software` | `creative_writing` | `research` | `design` | `general`
-2. Generate a COMPLETE spec draft using: user's intent + industry knowledge (read `references/inquiry-protocols.md`) + profile preferences + reasonable assumptions
-3. Assess confidence per constraint: ✅ high | ⚠️ medium (flag assumption) | ❓ low (must ask)
+### 1.3 Present Choices
 
-### Step 3: Environment Discovery
+Ask **at most 3 questions**, using multiple choice when possible:
+
+```
+I'll generate an Intent Spec for this. A few decisions first:
+
+1. Technical approach
+   a) Pure frontend static site (simple, free hosting)
+   b) Frontend + backend (data persistence, analytics)
+
+2. Scope
+   a) Start with one [thing], architecture supports expansion
+   b) Build all three [things] from the start
+
+3. Language
+   a) Chinese only
+   b) Chinese + English
+```
+
+**Rules for intent convergence:**
+- Only ask about decisions that change the STRUCTURE of the spec (architecture, scope, language, platform)
+- Do NOT ask about design decisions (colors, frameworks, patterns) — those go into the spec as agent-track constraints
+- If the user's intent is clear enough, skip to Step 2 with zero questions
+- Prefer multiple choice over open-ended
+- One message, all questions at once (not one-at-a-time)
+
+---
+
+## Step 2: Generate Intent Spec
+
+### 2.1 Environment Discovery
 
 ```bash
 which go 2>/dev/null && go version
@@ -27,13 +73,11 @@ which node 2>/dev/null && node --version
 which python3 2>/dev/null && python3 --version
 which docker 2>/dev/null && docker --version
 which git 2>/dev/null && git --version
-which claude 2>/dev/null && claude --version
-ls ~/.claude/plugins/ 2>/dev/null
 ```
 
-### Step 4: Environment Negotiation (be aggressive)
+### 2.2 Environment Negotiation (be aggressive)
 
-Calculate what COULD be auto-verified with additional tools. Present:
+Calculate what COULD be auto-verified with additional tools:
 
 ```
 Current auto-verification coverage: X%
@@ -45,23 +89,19 @@ Strongly recommended:
      I can install this myself: [yes/no]
 ```
 
-For tools you can install (npm/pip packages, plugins): offer to install immediately.
+### 2.3 Generate Constraints
 
-### Step 5: Assign Tracks and Verifiers
+Using the user's intent + Step 1 decisions + industry knowledge (read `references/inquiry-protocols.md`) + profile preferences:
 
-For EVERY constraint, assign:
-- `track: agent` if verifiable by auto or ai_review
-- `track: human` ONLY if genuinely subjective with no automated proxy
-- Prefer: auto > ai_review > human
+1. Generate ALL constraints with confidence levels: ✅ high | ⚠️ medium | ❓ low
+2. Assign track and verifier per constraint (prefer: auto > ai_review > human)
+3. For each constraint, define:
+   - `check`: the command or method to verify
+   - `test_method`: detailed description of what tests should cover (scenarios, edge cases, expected behaviors). This is what the agent reads when generating the test suite.
+   - `tools_required`: list of specific tools needed (e.g., `[vitest]`, `[pytest]`, `[golangci-lint]`)
+   - `ratchet_metric`: quantified progress indicator
 
-For each constraint, define `ratchet_metric` — a quantified progress indicator, not just pass/fail:
-- Test pass rate: "passed_tests / total_tests"
-- AI review: the rubric score itself (1-5)
-- Coverage: "covered_items / total_items"
-
-### Step 6: Configure Ratchet
-
-Based on project type and verifier distribution:
+### 2.4 Configure Ratchet
 
 ```yaml
 ratchet:
@@ -75,45 +115,68 @@ ratchet:
       ai_review_avg: 0.3
 ```
 
-### Step 7: Generate spec.yaml
+### 2.5 Write spec.yaml
 
 Create `.ratchet/` directory if needed. Write spec.yaml per schema in `references/spec-schema.md`.
 
-### Step 8: Present and Confirm
+---
 
-Show readable summary (NOT raw YAML):
+## Step 3: Conversation Review
+
+Present the Intent Spec section-by-section in conversation. Do NOT show raw YAML — show a readable summary.
+
+### 3.1 Present Summary
 
 ```
-📋 Spec for "[name]" (v1)
+📋 Intent Spec for "[name]" (v1)
 
 What I'll build:
   [2-3 sentences]
 
-Key constraints: [N] total
-  Agent track: [N] (auto: X, ai_review: Y) — runs without you
-  Human track: [N] — you'll review when ready
+🔒 Invariants (N) — all look right?
+  INV-01  [claim]                    auto │ [tool]
+  INV-02  [claim]                    auto │ [tool]
+  ...
 
-Ratchet: [budget] iterations per work package
+📊 Quality Dimensions (N) — thresholds OK?
+  QD-01  [dimension]    ai_review    threshold: 4/5
+  QD-02  [dimension]    human        threshold: 3/5
+  ...
+
+🎯 Verification Coverage
+  auto: X% │ ai_review: Y% │ human: Z%
+
+🔄 Ratchet: [budget] iterations per work package
 
 ⚠️ I assumed:
-  1. [assumption]
+  1. [assumption with medium confidence]
 
-❓ I need your input on:
-  1. [question — max 3]
+Type feedback to adjust, or "approve" to continue to plan.
 ```
 
-### Step 9: Register Project
+### 3.2 Process Feedback
 
-Update `~/.config/ratchet/state.yaml` with project entry.
+When the user provides feedback:
+- **Incrementally patch** the spec — do NOT regenerate from scratch
+- Show what changed: "Updated INV-03 threshold from 80% to 90%"
+- Re-present only the changed section
+- Ask again: "Anything else, or approve?"
 
-### Step 10: Record Metrics
+### 3.3 Finalize
 
-Append to `.ratchet/metrics.yaml`: timestamp, human_interactions, confidence_distribution, auto_coverage.
+On approval:
+1. Ensure spec.yaml is written/updated
+2. Register project in `~/.config/ratchet/state.yaml`
+3. Record metrics in `.ratchet/metrics.yaml`
+4. Suggest: "Ready for `/ratchet:plan` to decompose into work packages and generate test suite."
+
+---
 
 ## Rules
 
-1. **Max 3 questions.** If you're asking more, you're not using industry knowledge enough.
-2. **Every constraint gets a track.** No constraint without `track: agent` or `track: human`.
-3. **Every constraint gets a ratchet_metric.** Even if it's just pass/fail (0 or 1).
-4. **Under 5 minutes** for the entire spec process.
-5. **Exploration hints matter.** Add 2-3 hints about what to try if the agent gets stuck.
+1. **Max 3 questions in Step 1.** If you need more, you're not using industry knowledge enough.
+2. **Questions are about "what", not "how".** Architecture, scope, platform — not design or implementation.
+3. **Every constraint gets track + ratchet_metric + test_method.** No exceptions.
+4. **Patch, don't regenerate.** In Step 3, apply feedback incrementally.
+5. **Under 5 minutes** for the entire 3-step process.
+6. **Exploration hints matter.** Add 2-3 hints about what to try if the agent gets stuck.

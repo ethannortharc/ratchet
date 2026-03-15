@@ -1,5 +1,5 @@
 ---
-description: "Decompose spec.yaml into executable work packages with dependencies and ratchet config"
+description: "Decompose Intent Spec into work packages, generating test suite first"
 ---
 
 Use the ratchet `plan` skill to handle this request. Follow the skill's workflow exactly.

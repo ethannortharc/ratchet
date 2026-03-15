@@ -1,5 +1,5 @@
 ---
-description: "Transform intent into a structured, verifiable specification (spec.yaml) with dual-track constraints and ratchet configuration"
+description: "Transform intent into a structured, verifiable Intent Spec via hybrid 3-step flow"
 ---
 
 Use the ratchet `spec` skill to handle this request. Follow the skill's workflow exactly.

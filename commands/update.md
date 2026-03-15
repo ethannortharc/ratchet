@@ -1,5 +1,5 @@
 ---
-description: "Update a project's spec mid-execution — add constraints, modify thresholds, or change direction"
+description: "Update a project's Intent Spec mid-execution — add constraints, modify thresholds, or change direction"
 argument-hint: "CHANGE_DESCRIPTION"
 ---
 
