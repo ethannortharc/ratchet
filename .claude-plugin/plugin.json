@@ -1,6 +1,6 @@
 {
   "name": "ratchet",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Intent-driven execution with ratchet optimization. Dual-track verification, autonomous iteration, cross-domain support.",
   "author": {
     "name": "Ethan"
@@ -8,6 +8,5 @@
   "repository": "https://git.giomni.com/workbench/ratchet",
   "license": "MIT",
   "keywords": ["intent", "spec", "verification", "ratchet", "workflow", "automation"],
-  "skills": "./skills/",
-  "hooks": "./hooks/hooks.json"
+  "skills": "./skills/"
 }
