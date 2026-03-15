@@ -1,6 +1,6 @@
 {
   "name": "ratchet",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Intent-driven execution with ratchet optimization. Dual-track verification, autonomous iteration, cross-domain support.",
   "author": {
     "name": "Ethan"
