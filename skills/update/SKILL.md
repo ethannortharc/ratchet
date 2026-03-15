@@ -36,7 +36,7 @@ User: "search feels slow"
 → INV-new: "Search completes in < 200ms for 1000 notes"
   track: agent, verifier: auto
   check: "benchmark search latency"
-  
+
 This was originally a human observation but is now machine-verifiable.
 ```
 

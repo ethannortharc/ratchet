@@ -1,0 +1,8 @@
+{
+  "hooks": [
+    {
+      "event": "session_start",
+      "skill": "getting-started"
+    }
+  ]
+}
