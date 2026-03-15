@@ -1,6 +1,6 @@
 ---
 name: review
-description: Process the human-track review queue across all projects. Shows pending items sorted by priority (blocking items first). Handles feedback and converts subjective input into agent-verifiable constraints when possible. Use when the user says "review", "what needs my attention", "any pending items", or after agent notifies of completed work.
+description: Process the human-track review queue across all intents. Shows pending items sorted by priority (blocking items first), with intent ID and workspace for each. Handles feedback and converts subjective input into agent-verifiable constraints when possible. Use when the user says "review", "what needs my attention", "any pending items", or after agent notifies of completed work.
 ---
 
 # Review — Human-Track Async Queue
@@ -13,19 +13,21 @@ Read `~/.config/ratchet/review_queue.yaml`. If empty, report "No pending reviews
 ### Step 2: Show Queue (sorted by priority)
 
 ```
-📋 Review Queue ([N] items)
+📋 Review Queue ([N] items across [M] intents)
 
-🔴 [high] project-name / WP description
-   ← Agent blocked: downstream WPs waiting on this
+🔴 [high] prism / WP description
+   Intent: prism │ Workspace: /Users/coder/projects/prism
    Constraint: [claim]
    📎 [artifact path or inline preview]
+   📝 [checklist path if exists]
 
-⚪ [normal] project-name / WP description
+⚪ [normal] note-cli / WP description
+   Intent: note-cli │ Workspace: /Users/coder/projects/note-cli
    Constraint: [claim]
    📎 [artifact path]
 
 💡 Agent Suggestions ([N] items)
-   1. [project]: [proposed constraint] — [rationale]
+   1. [prism]: [proposed constraint] — [rationale]
 ```
 
 ### Step 3: Process Reviews
@@ -37,8 +39,8 @@ For each item the user reviews:
 **Revise**: Ask for specific feedback. Then:
 1. Try to convert feedback into an agent-verifiable constraint
 2. Show the conversion: "You said '[subjective feedback]'. I'll add this constraint: '[objective version]' with test_method: '[how to test it]'. Does this capture it?"
-3. If confirmed: add to Intent Spec (with test_method + tools_required), increment version, trigger new iteration
-4. If not captured well: keep as human-track, add exploration_hint
+3. If confirmed: add to Intent Spec (with test_method + tools_required), increment version, regenerate test in `.ratchet/test-suite/`, trigger new iteration
+4. If not captured well: keep as human-track, add to agent_guidance
 
 **Fail**: Ask what's fundamentally wrong. Determine if it's an Intent Spec issue (need to change direction) or an execution issue (need to try harder in same direction).
 
@@ -51,7 +53,10 @@ For each suggested constraint:
 
 ### Step 5: Update State
 
-Remove processed items from queue. Update project state. If Intent Spec changed, log in changelog.
+Remove processed items from queue. Update intent state in `~/.config/ratchet/state.yaml`:
+- If all human reviews pass → set status to `done`
+- If feedback triggers new round → set status to `agent_running`
+- Update `current_blocker` field (clear if resolved, set if new blockers)
 
 ## The Feedback Conversion Engine
 
@@ -63,13 +68,14 @@ Human says              → Agent converts to
 "code is messy"         → "golangci-lint passes" (auto)
 "tone shifts in ch3"    → "tone consistency score ≥ 4" (ai_review)
 "navigation confusing"  → "max 2 clicks to any feature" (auto)
-"story is boring"       → harder — add exploration_hint, keep human
+"story is boring"       → harder — add to agent_guidance, keep human
 ```
 
-Not everything can be converted. "Story is boring" has no good proxy. That's fine — add it as exploration_hint ("try increasing conflict density, add a plot twist in ch3") and keep the quality dimension as human-track.
+Not everything can be converted. "Story is boring" has no good proxy. That's fine — add direction to `agent_guidance` ("try increasing conflict density, add a plot twist in ch3") and keep the quality dimension as human-track.
 
 ## Rules
 1. **Always attempt feedback conversion.** Even partial conversion is valuable.
 2. **Show conversion before applying.** Human must confirm the objective version captures their intent.
 3. **High-priority items first.** They're blocking agent work.
 4. **Don't overwhelm.** If >10 items in queue, show top 5 and ask if user wants to see rest.
+5. **Show intent ID and workspace** for every review item.

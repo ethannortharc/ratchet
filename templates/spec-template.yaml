@@ -28,7 +28,10 @@ invariants: []
   #   check: ""
   #   test_method: |
   #     Describe what to test: scenarios, edge cases, expected behaviors
-  #   tools_required: [vitest]
+  #   tools_required:
+  #     - id: vitest
+  #       install: "npm install -D vitest"
+  #       agent_can_install: true
   #   ratchet_metric: "passed / total"
 
 quality_dimensions: []
@@ -48,7 +51,10 @@ quality_dimensions: []
 
 preferences: []
 
-exploration_hints: []
+agent_guidance: |
+  # Agent context and constraints for this intent.
+  # Include: what the project is, key constraints, what to do when stuck.
+  # Do NOT include: implementation details the agent should decide.
 
 ratchet:
   enabled: true

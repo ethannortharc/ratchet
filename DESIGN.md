@@ -10,15 +10,19 @@ The name comes from the core mechanism: like a ratchet wrench, progress only mov
 
 1. **Hybrid 3-step spec.** When a user describes intent: (1) converge on 2-3 high-level decisions, (2) generate a complete Intent Spec using industry knowledge + profile, (3) review section-by-section in conversation with incremental patching. Under 5 minutes total.
 
-2. **Dual-track verification.** Agent-track constraints (auto + ai_review) run continuously without human involvement. Human-track constraints queue asynchronously — the user reviews when available, not when the system demands.
+2. **Test suite first.** After Intent Spec confirmation, auto-generate concrete test files from each constraint's `test_method`. Tests exist before implementation starts, giving the ratchet loop real signals from iteration 1.
 
-3. **Test suite first.** Before implementation, generate tests from each constraint's `test_method`. This gives the ratchet loop real pass/fail signals from iteration 1 (TDD at the framework level).
+3. **Dual-track verification.** Agent-track constraints (auto + ai_review) run continuously without human involvement. Human-track constraints queue asynchronously — the user reviews when available, not when the system demands.
 
 4. **Ratchet loop.** Every work package iterates: execute → verify → improved? keep : discard → repeat. Budget-limited, git-backed. Only escalate to human when budget is exhausted.
 
-5. **Agent is proactive.** The system actively requests better tools/environment to increase automation coverage. It discovers new constraints during execution and proposes them for human approval.
+5. **Workspace isolation.** Each intent is registered with a unique ID and locked to an absolute workspace path. All operations stay within the workspace. The global registry enables multi-intent management from any directory.
 
-6. **Intent Spec is a living document.** Versioned, updatable at any time. Human feedback gets converted into agent-verifiable constraints whenever possible. Over time, human-track shrinks, agent-track grows.
+6. **Proof of work.** Reports include raw verification outputs — actual test results, ai_review justifications, screenshots — not just pass/fail counts.
+
+7. **Agent is proactive.** The system actively requests better tools/environment to increase automation coverage. It discovers new constraints during execution and proposes them for human approval.
+
+8. **Intent Spec is a living document.** Versioned, updatable at any time. Human feedback gets converted into agent-verifiable constraints whenever possible. Over time, human-track shrinks, agent-track grows.
 
 ## Architecture Overview
 
@@ -31,22 +35,27 @@ User: "I want to build X"
 │   Step 1: Intent convergence (2-3 decisions)        │
 │   Step 2: Generate Intent Spec (industry knowledge) │
 │   Step 3: Conversation review + patch               │
-│   Output: spec.yaml v1                              │
+│   Step 4: Auto-generate test suite                  │
+│   Register workspace in global intent registry      │
+│   Output: spec.yaml v1 + .ratchet/test-suite/       │
+│   State: draft → active                             │
 └──────────────────────┬──────────────────────────────┘
                        │
                        ▼
 ┌─────────────────────────────────────────────────────┐
-│ Phase 2: Planning + Test Suite (sync, ~5 min)       │
+│ Phase 2: Planning (sync, ~5 min)                    │
 │   Decompose into work packages                     │
+│   Reference pre-generated test suite files          │
 │   wp-00: Environment prep (if needed)              │
-│   wp-01: Generate test suite from test_method      │
-│   wp-02+: Implementation work packages             │
-│   Output: plan.yaml + test files                   │
+│   wp-01+: Implementation work packages             │
+│   Output: plan.yaml                                │
+│   State: active                                     │
 └──────────────────────┬──────────────────────────────┘
                        │
                        ▼
 ┌─────────────────────────────────────────────────────┐
 │ Phase 3: Autonomous Execution (async, hours)        │
+│   State: agent_running                              │
 │                                                     │
 │   For each WP (parallel where possible):            │
 │   ┌───────────────────────────────────────────┐     │
@@ -54,21 +63,25 @@ User: "I want to build X"
 │   │   ├─ improved? → git commit (keep)        │     │
 │   │   └─ not improved? → git reset (discard)  │     │
 │   │ Repeat until pass or budget exhausted     │     │
+│   │ Capture raw output for proof of work      │     │
 │   │                                           │     │
 │   │ Agent-complete → queue human-track items  │     │
 │   └───────────────────────────────────────────┘     │
 │                                                     │
 │   Cross-WP knowledge transfer                       │
 │   Incremental delivery (done WPs available early)   │
-│   Generate iteration reports                        │
+│   Generate iteration reports with proof of work     │
+│   State: → agent_complete                           │
 └──────────────────────┬──────────────────────────────┘
                        │
                        ▼
 ┌─────────────────────────────────────────────────────┐
 │ Phase 4: Human Review (async, ~5-10 min)            │
-│   Review queue shows pending items across projects  │
+│   State: human_review                               │
+│   Review queue shows pending items across intents   │
 │   Feedback → converted to agent constraints →       │
 │   spec version increments → triggers new round      │
+│   State: → agent_running (new round) or done        │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -85,27 +98,69 @@ The structured representation of human intent. Three tiers of constraints:
 Each constraint has:
 - `track`: `agent` (auto-verified, drives ratchet) or `human` (queued for async review)
 - `verifier`: `auto` (executable check) | `ai_review` (AI evaluates against rubric) | `human` (subjective judgment)
-- `test_method`: detailed description of what to test — scenarios, edge cases, expected behaviors. Used by the agent to generate the test suite.
-- `tools_required`: specific tools needed for verification (e.g., `[vitest]`, `[pytest]`)
+- `test_method`: detailed description of what to test — scenarios, edge cases, expected behaviors. Used to generate the test suite.
+- `tools_required`: structured list with id, install hint, and agent_can_install flag
 - `ratchet_metric`: Quantified progress indicator (not just pass/fail)
+
+Intent Spec also includes:
+- `agent_guidance`: natural language prompt giving the agent project context, constraints, and direction when stuck. Replaces the flat `exploration_hints` list.
 
 Intent Spec is versioned. Every update increments version and logs the change reason.
 
 ### Hybrid 3-Step Spec Flow
 
 1. **Intent convergence**: Ask 2-3 multiple-choice questions about high-level "what" decisions (architecture, scope, platform). NOT design decisions (frameworks, patterns).
-2. **Generate Intent Spec**: Use decisions + industry knowledge + profile to produce complete spec.yaml with all constraints, test_methods, and tools_required.
+2. **Generate Intent Spec**: Use decisions + industry knowledge + profile to produce complete spec.yaml with all constraints, test_methods, tools_required, and agent_guidance.
 3. **Conversation review**: Present section-by-section summary. User provides natural language feedback. Incrementally patch — don't regenerate.
 
-### Test Suite First
+After approval, auto-generate the test suite (Step 4).
 
-After the Intent Spec is approved, `/ratchet:plan` generates tests as the first work package:
-- Read each constraint's `test_method` field
-- Generate test files using `tools_required`
-- Tests are runnable but failing (TDD red phase)
-- Implementation WPs then make tests pass (green phase)
+### Test Suite (.ratchet/test-suite/)
 
-This means the ratchet loop has real pass/fail signals from iteration 1, instead of the agent writing tests and implementation together (which makes the first score meaningless).
+Generated automatically after Intent Spec confirmation:
+- For `auto` verifiers: executable test files (unit tests, scripts) — runnable but failing (TDD red phase)
+- For `ai_review` verifiers: structured review prompts with rubric
+- For `human` verifiers: review checklists
+
+Mapped by `manifest.yaml` which links constraint IDs to test files.
+
+### Workspace Management
+
+Each intent is registered in `~/.config/ratchet/state.yaml` with:
+- Unique intent ID (kebab-case, auto-generated from name)
+- Absolute workspace path (locked at creation)
+- Lifecycle state
+- Ticket-like metadata (priority, tags, brief, current_blocker)
+
+All commands accept an optional intent ID. Resolution order when omitted:
+1. Current directory is inside a registered workspace → use that intent
+2. Multiple intents exist → ask user to choose
+3. No intents exist → suggest `/ratchet:spec`
+
+Agent execution includes workspace constraint: all file operations stay within the registered workspace.
+
+### Intent Lifecycle
+
+```
+draft → active → agent_running → agent_complete → human_review → done
+                      ↑                │
+                      └── ratchet ──────┘
+
+any → paused (user pauses)
+paused → active (user resumes)
+any → archived (user archives)
+```
+
+| State | Meaning |
+|-------|---------|
+| `draft` | Intent Spec exists but not yet confirmed |
+| `active` | Intent Spec confirmed, plan exists or being created |
+| `agent_running` | Agent is executing work packages with ratchet loop |
+| `agent_complete` | All agent-track constraints pass, human items queued |
+| `human_review` | Waiting for human to process review queue |
+| `done` | All constraints (agent + human) verified, project complete |
+| `paused` | User paused execution |
+| `archived` | User archived (hidden from active views) |
 
 ### Dual-Track Verification
 
@@ -130,6 +185,15 @@ Inspired by Karpathy's autoresearch:
 - Budget exhausted without passing → escalate to human
 
 Git backend for code projects, filesystem backend for non-code projects.
+
+### Proof of Work
+
+Reports include raw verification outputs:
+- Auto verifiers: actual test output, build logs, exit codes
+- AI reviews: full reviewer response with score and justification
+- Human items: artifact paths, checklists, screenshots
+
+This makes reports trustworthy and auditable. Raw output is captured during verification and stored in `review_log.yaml`.
 
 ### Constraint Discovery
 
@@ -160,20 +224,26 @@ Same framework for software, creative writing, research, design:
 │   ├── report.md                  # /ratchet:report command entry
 │   ├── profile.md                 # /ratchet:profile command entry
 │   ├── metrics.md                 # /ratchet:metrics command entry
-│   └── update.md                  # /ratchet:update command entry
+│   ├── update.md                  # /ratchet:update command entry
+│   ├── pause.md                   # /ratchet:pause command entry
+│   └── resume.md                  # /ratchet:resume command entry
 ├── skills/
 │   ├── getting-started/SKILL.md   # Session bootstrap
-│   ├── spec/SKILL.md              # Intent → Intent Spec (hybrid 3-step)
-│   ├── plan/SKILL.md              # Intent Spec → work packages + test suite
+│   ├── spec/SKILL.md              # Intent → Intent Spec + test suite (hybrid 3-step)
+│   ├── plan/SKILL.md              # Intent Spec → work packages
 │   ├── verify/SKILL.md            # Three-tier verification + ratchet loop
 │   ├── update/SKILL.md            # Mid-project Intent Spec updates
 │   ├── review/SKILL.md            # Human-track async review queue
-│   ├── status/SKILL.md            # Multi-project dashboard
-│   ├── report/SKILL.md            # Iteration + project reports
+│   ├── status/SKILL.md            # Multi-intent dashboard
+│   ├── report/SKILL.md            # Iteration + project reports with proof of work
 │   ├── profile/SKILL.md           # Personal preferences
-│   └── metrics/SKILL.md           # Interaction tracking
+│   ├── metrics/SKILL.md           # Interaction tracking
+│   ├── pause/SKILL.md             # Pause intent execution
+│   └── resume/SKILL.md            # Resume paused intent
+├── hooks/
+│   └── hooks.json                 # Lifecycle hooks (auto-loaded)
 ├── references/
-│   ├── spec-schema.md             # Intent Spec format
+│   ├── spec-schema.md             # Intent Spec format + state.yaml schema
 │   ├── inquiry-protocols.md       # Domain knowledge
 │   └── verifier-guide.md          # Verification implementation
 ├── templates/
@@ -181,21 +251,26 @@ Same framework for software, creative writing, research, design:
 └── DESIGN.md                      # This file
 ```
 
-### User Config (read-write, persists across projects)
+### User Config (read-write, persists across intents)
 ```
 ~/.config/ratchet/
 ├── profile.yaml                   # Personal preferences
-├── state.yaml                     # All projects index
-├── review_queue.yaml              # Cross-project human review queue
-└── global_metrics.yaml            # Cross-project trends
+├── state.yaml                     # Global intent registry
+├── review_queue.yaml              # Cross-intent human review queue
+└── global_metrics.yaml            # Cross-intent trends
 ```
 
-### Project State (read-write, per project)
+### Project State (read-write, per intent workspace)
 ```
-<project-dir>/.ratchet/
+<workspace>/.ratchet/
 ├── spec.yaml                      # Versioned Intent Spec
 ├── plan.yaml                      # Work packages + dependency graph
-├── review_log.yaml                # All verification results
+├── test-suite/                    # Auto-generated test files
+│   ├── manifest.yaml              # Constraint → test file mapping
+│   ├── INV-01.test.ts             # Auto verifier tests
+│   ├── QD-01.review.md            # AI review prompts
+│   └── QD-02.checklist.md         # Human review checklists
+├── review_log.yaml                # All verification results + raw output
 ├── metrics.yaml                   # Project-level metrics
 ├── suggested_constraints.yaml     # Agent-proposed constraints
 ├── iteration_history.yaml         # Per-round summaries
@@ -211,101 +286,49 @@ Same framework for software, creative writing, research, design:
 
 ## Intent Spec Schema
 
+See `references/spec-schema.md` for the complete schema. Key additions from v0.3.0:
+
+- `tools_required` is now structured objects (id, install, agent_can_install) not simple strings
+- `agent_guidance` replaces `exploration_hints` as a natural language prompt
+- `project.status` uses the full lifecycle state machine
+
+## Global State Schema (state.yaml)
+
 ```yaml
-project:
-  name: string
-  type: software | creative_writing | research | design | general
-  description: string
-  created: datetime
-  status: draft | active | completed | archived
-
-spec_version: int
-changelog:
-  - version: int
-    date: datetime
-    source: human | agent_suggestion | review_feedback
-    change: string
-    added: [string]
-    modified: [string]
-    removed: [string]
-
-environment:
-  capabilities:
-    - id: string
-      type: runtime | tool | agent | service
-      version: string
-      detected: bool
-      enables: [string]
-  absent:
-    - id: string
-      impact: string
-      install_hint: string
-      agent_can_install: bool
-
-invariants:
-  - id: string            # INV-01
-    claim: string
-    track: agent | human
-    confidence: high | medium | low
-    verifier: auto | ai_review | human
-    requires: [string]     # Capability IDs
-    check: string          # Command or method to verify
-    test_method: string    # Detailed test scenarios for agent
-    tools_required: [string]  # Tools needed for verification
-    ratchet_metric: string
-    fallback_verifier: string
-    fallback_check: string
-
-quality_dimensions:
-  - id: string            # QD-01
-    dimension: string
-    track: agent | human
-    confidence: high | medium | low
-    verifier: auto | ai_review | human
-    rubric: string         # 5/3/1 scoring
-    threshold: number
-    test_method: string    # How to evaluate this dimension
-    tools_required: [string]
-    ratchet_metric: string
-
-preferences:
-  - string
-
-exploration_hints:
-  - string                 # Direction suggestions for agent when stuck
-
-ratchet:
-  enabled: bool
-  default_budget: int      # Max iterations per WP
-  strategy: keep_best | keep_last
-  backend: git | filesystem  # Auto-detected
-  composite_score:
-    method: weighted_average | single_metric
-    weights: {metric: weight}
-
-profile_applied:
-  - key: string
-    value: string
-    source: profile | project-override
+intents:
+  - id: string                    # Unique identifier (kebab-case)
+    name: string                   # Human-readable name
+    workspace: string              # Absolute path, locked at creation
+    type: string                   # software | creative_writing | research | design | general
+    status: string                 # Lifecycle state
+    spec_version: int
+    created: datetime
+    last_activity: datetime
+    priority: string               # low | normal | high | urgent
+    tags: [string]
+    brief: string                  # One-line summary
+    current_blocker: string        # null, or what's blocking
 ```
 
 ## Commands
 
 | Command | Purpose | Phase |
 |---------|---------|-------|
-| `/ratchet:spec` | Intent → Intent Spec (hybrid 3-step) | Init |
-| `/ratchet:plan` | Intent Spec → work packages + test suite | Planning |
+| `/ratchet:spec` | Intent → Intent Spec + test suite (hybrid 3-step) | Init |
+| `/ratchet:plan` | Intent Spec → work packages | Planning |
 | `/ratchet:verify` | Run verification + ratchet loop | Execution |
 | `/ratchet:review` | Process human-track review queue | Review |
-| `/ratchet:status` | Multi-project dashboard | Monitoring |
-| `/ratchet:report` | Generate iteration/project report | Reporting |
+| `/ratchet:status` | Multi-intent dashboard with lifecycle | Monitoring |
+| `/ratchet:report` | Generate reports with proof of work | Reporting |
 | `/ratchet:profile` | Manage personal preferences | Setup |
 | `/ratchet:metrics` | Show interaction + automation stats | Analysis |
 | `/ratchet:update` | Update Intent Spec mid-project | Iteration |
+| `/ratchet:pause` | Pause intent execution | Control |
+| `/ratchet:resume` | Resume paused intent | Control |
 
-Typical flow: `/ratchet:spec` → confirm → `/ratchet:plan` (generates tests) → agent runs autonomously → `/ratchet:review` when notified → `/ratchet:report` to see results.
+Most commands accept an optional intent ID as argument. When omitted, resolved by current directory → registry → ask.
 
-Advanced: individual commands for fine-grained control.
+Typical flow: `/ratchet:spec` → confirm → `/ratchet:plan` → agent runs autonomously → `/ratchet:review` when notified → `/ratchet:report` to see results.
 
 ## Design Decisions
 
@@ -313,7 +336,19 @@ Advanced: individual commands for fine-grained control.
 Single-pass generates a full spec then asks "any questions?" — but fundamental direction choices get buried alongside implementation details. The hybrid flow settles high-level "what" decisions first (architecture, scope, platform), then generates the complete spec, then reviews section-by-section with incremental patching. Each step has a clear purpose and stays under 5 minutes total.
 
 ### Why test suite before implementation?
-Without pre-existing tests, the ratchet loop's first iteration has no meaningful signal — the agent writes code and tests together, so the first "score" is always artificial. Generating tests first (from `test_method` fields) means every iteration has real pass/fail data. This is TDD at the framework level.
+Without pre-existing tests, the ratchet loop's first iteration has no meaningful signal — the agent writes code and tests together, so the first "score" is always artificial. Generating tests first (from `test_method` fields) means every iteration has real pass/fail data. This is TDD at the framework level. Generating tests also surfaces ambiguities in the spec early.
+
+### Why workspace isolation?
+Without it, the agent can `cd ..` and break context. Multiple intents have no clear boundary. The workspace registry with absolute paths provides: isolation (agent stays in workspace), multi-intent support (commands work from any directory), and clear project boundaries.
+
+### Why intent lifecycle state machine?
+Simple status values (draft/active/completed) don't capture the execution flow. The full state machine (draft → active → agent_running → agent_complete → human_review → done) makes `/ratchet:status` meaningful and enables pause/resume functionality.
+
+### Why proof of work in reports?
+"4/6 passed" is not trustworthy. Showing actual test output, build logs, and ai_review justifications makes reports auditable. The user can see exactly what was verified and how, building confidence in the system.
+
+### Why agent_guidance instead of exploration_hints?
+A flat list of strings ("try X", "try Y") is too shallow. `agent_guidance` is a natural language prompt giving the agent rich context — what the project is, key constraints, what to try when stuck, and anti-patterns to avoid. More expressive and easier to write.
 
 ### Why dual-track instead of unified verification?
 Single-track means every human checkpoint blocks the agent. Dual-track lets agent optimize continuously while human reviews accumulate in a queue. This maximizes agent autonomy and respects human time.

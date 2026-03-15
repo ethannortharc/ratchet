@@ -1,5 +1,5 @@
 ---
-description: "Transform intent into a structured, verifiable Intent Spec via hybrid 3-step flow"
+description: "Transform intent into a structured, verifiable Intent Spec via hybrid 3-step flow, then auto-generate test suite"
 ---
 
 Use the ratchet `spec` skill to handle this request. Follow the skill's workflow exactly.

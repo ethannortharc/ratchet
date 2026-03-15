@@ -1,13 +1,13 @@
 ---
 name: spec
-description: Transform intent into a structured, verifiable Intent Spec (spec.yaml) through a hybrid 3-step flow. Step 1 converges on high-level decisions, Step 2 generates the full Intent Spec, Step 3 reviews section-by-section in conversation. Use whenever the user describes something they want to build, create, write, or accomplish.
+description: Transform intent into a structured, verifiable Intent Spec (spec.yaml) through a hybrid 3-step flow, then auto-generate the test suite. Use whenever the user describes something they want to build, create, write, or accomplish. Supports workspace registration and intent ID for multi-project management.
 ---
 
-# Spec — Intent Formalization (Hybrid 3-Step)
+# Spec — Intent Formalization (Hybrid 3-Step) + Test Suite
 
 ## Overview
 
-The spec flow has three distinct steps. The entire process should take under 5 minutes.
+The spec flow has three steps plus automatic test suite generation. The entire process should take under 5 minutes.
 
 ```
 Step 1: Intent Convergence (~1 min)
@@ -16,13 +16,13 @@ Step 2: Generate Intent Spec (~2 min)
   → Full spec.yaml using decisions + industry knowledge
 Step 3: Conversation Review (~2 min)
   → Section-by-section summary, natural language feedback, incremental patch
+Step 4: Auto-generate Test Suite (automatic)
+  → Concrete test files from each constraint's test_method
 ```
 
 ---
 
 ## Step 1: Intent Convergence
-
-The goal is to settle high-level decisions that fork the entire spec. Ask about **what**, not **how**.
 
 ### 1.1 Load Profile
 
@@ -56,10 +56,24 @@ I'll generate an Intent Spec for this. A few decisions first:
 
 **Rules for intent convergence:**
 - Only ask about decisions that change the STRUCTURE of the spec (architecture, scope, language, platform)
-- Do NOT ask about design decisions (colors, frameworks, patterns) — those go into the spec as agent-track constraints
+- Do NOT ask about design decisions (colors, frameworks, patterns) — those go into agent_guidance
 - If the user's intent is clear enough, skip to Step 2 with zero questions
 - Prefer multiple choice over open-ended
 - One message, all questions at once (not one-at-a-time)
+
+### 1.4 Register Workspace
+
+After intent convergence (or immediately if no questions needed):
+
+```
+Intent ID? [auto-generated from project name, user can override]
+Workspace location?
+  [1] Current directory: /Users/coder/projects/prism
+  [2] Create new: ~/projects/[intent-id]
+  [3] Custom path
+```
+
+Register in `~/.config/ratchet/state.yaml` with absolute path. All subsequent operations for this intent are locked to this workspace.
 
 ---
 
@@ -98,10 +112,27 @@ Using the user's intent + Step 1 decisions + industry knowledge (read `reference
 3. For each constraint, define:
    - `check`: the command or method to verify
    - `test_method`: detailed description of what tests should cover (scenarios, edge cases, expected behaviors). This is what the agent reads when generating the test suite.
-   - `tools_required`: list of specific tools needed (e.g., `[vitest]`, `[pytest]`, `[golangci-lint]`)
+   - `tools_required`: structured list with id, install hint, and agent_can_install flag
    - `ratchet_metric`: quantified progress indicator
 
-### 2.4 Configure Ratchet
+### 2.4 Generate agent_guidance
+
+Create the `agent_guidance` section — a natural language prompt giving the agent project context, key constraints, and direction when stuck:
+
+```yaml
+agent_guidance: |
+  You are working on intent "[name]".
+  [What the project is in 1-2 sentences]
+
+  [Key constraints and direction]
+
+  When stuck on [X], try [Y].
+
+  Do NOT:
+  - [Anti-patterns specific to this project]
+```
+
+### 2.5 Configure Ratchet
 
 ```yaml
 ratchet:
@@ -115,9 +146,9 @@ ratchet:
       ai_review_avg: 0.3
 ```
 
-### 2.5 Write spec.yaml
+### 2.6 Write spec.yaml
 
-Create `.ratchet/` directory if needed. Write spec.yaml per schema in `references/spec-schema.md`.
+Create `.ratchet/` directory in the registered workspace if needed. Write spec.yaml per schema in `references/spec-schema.md`.
 
 ---
 
@@ -151,7 +182,7 @@ What I'll build:
 ⚠️ I assumed:
   1. [assumption with medium confidence]
 
-Type feedback to adjust, or "approve" to continue to plan.
+Type feedback to adjust, or "approve" to continue.
 ```
 
 ### 3.2 Process Feedback
@@ -166,9 +197,80 @@ When the user provides feedback:
 
 On approval:
 1. Ensure spec.yaml is written/updated
-2. Register project in `~/.config/ratchet/state.yaml`
+2. Update intent status to `active` in `~/.config/ratchet/state.yaml`
 3. Record metrics in `.ratchet/metrics.yaml`
-4. Suggest: "Ready for `/ratchet:plan` to decompose into work packages and generate test suite."
+4. Proceed to Step 4 (test suite generation)
+
+---
+
+## Step 4: Auto-generate Test Suite
+
+After spec confirmation, automatically generate concrete test files from each constraint's `test_method`. This happens without user intervention.
+
+### 4.1 Create test-suite directory
+
+```bash
+mkdir -p .ratchet/test-suite
+```
+
+### 4.2 Generate test files
+
+For each constraint:
+
+**`verifier: auto`** → Generate executable test file:
+- Read `test_method` for scenarios and edge cases
+- Use `tools_required` to determine test framework (vitest, pytest, go test, etc.)
+- Generate runnable but FAILING tests (TDD red phase)
+- File: `.ratchet/test-suite/INV-01.test.{ts,py,go,...}`
+
+**`verifier: ai_review`** → Generate structured review prompt:
+- Include rubric, threshold, what to evaluate
+- File: `.ratchet/test-suite/QD-01.review.md`
+
+**`verifier: human`** → Generate review checklist:
+- Clear criteria, where to find artifacts, pass/fail guidance
+- File: `.ratchet/test-suite/QD-02.checklist.md`
+
+### 4.3 Write manifest
+
+Create `.ratchet/test-suite/manifest.yaml`:
+```yaml
+generated: [datetime]
+spec_version: 1
+project_type: [type]
+test_runner: [vitest | pytest | go test | ...]
+entries:
+  - constraint_id: INV-01
+    type: auto
+    file: INV-01.test.ts
+    status: generated
+  - constraint_id: QD-01
+    type: ai_review
+    file: QD-01.review.md
+    status: generated
+```
+
+### 4.4 Report and continue
+
+```
+✅ Test suite generated: [N] test files
+   auto: [N] executable tests
+   ai_review: [N] review prompts
+   human: [N] checklists
+
+Ready for /ratchet:plan to decompose into work packages.
+```
+
+---
+
+## Workspace Resolution
+
+When this skill is invoked:
+1. If intent ID provided as argument → look up workspace in state.yaml
+2. If current directory is inside a registered workspace → use that intent
+3. If creating new → register workspace (Step 1.4)
+
+**Agent execution constraint:** All file operations must stay within the registered workspace directory.
 
 ---
 
@@ -176,7 +278,8 @@ On approval:
 
 1. **Max 3 questions in Step 1.** If you need more, you're not using industry knowledge enough.
 2. **Questions are about "what", not "how".** Architecture, scope, platform — not design or implementation.
-3. **Every constraint gets track + ratchet_metric + test_method.** No exceptions.
+3. **Every constraint gets track + ratchet_metric + test_method + tools_required.** No exceptions.
 4. **Patch, don't regenerate.** In Step 3, apply feedback incrementally.
-5. **Under 5 minutes** for the entire 3-step process.
-6. **Exploration hints matter.** Add 2-3 hints about what to try if the agent gets stuck.
+5. **Under 5 minutes** for the entire process (Steps 1-3). Step 4 runs automatically.
+6. **agent_guidance replaces exploration_hints.** Write a natural language prompt, not a flat list.
+7. **Register workspace.** Every intent gets a locked absolute path.
