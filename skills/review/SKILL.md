@@ -67,18 +67,18 @@ Remove processed items from queue. Update intent state in `~/.config/ratchet/sta
 
 ## The Feedback Conversion Engine
 
-This is the most important part of review. Every piece of human feedback is an opportunity to shrink the human track:
+This is the most important part of review. Every piece of human feedback is an opportunity to shrink the human track.
 
-```
-Human says              → Agent converts to
-"feels slow"            → "response time < 200ms" (auto)
-"code is messy"         → "golangci-lint passes" (auto)
-"tone shifts in ch3"    → "tone consistency score ≥ 4" (ai_review)
-"navigation confusing"  → "max 2 clicks to any feature" (auto)
-"story is boring"       → harder — add to agent_guidance, keep human
-```
+**Load conversion patterns from `references/feedback-patterns.md`** — this file contains domain-specific pattern tables (software, creative writing, research, design) mapping common feedback phrases to concrete constraints with verifier type and test method.
 
-Not everything can be converted. "Story is boring" has no good proxy. That's fine — add direction to `agent_guidance` ("try increasing conflict density, add a plot twist in ch3") and keep the quality dimension as human-track.
+**Process:**
+1. Match feedback against domain-specific patterns in `references/feedback-patterns.md`
+2. If a pattern matches → use suggested constraint, verifier, and test_method
+3. If no pattern matches → use the Conversion Strategy (also in the reference file) to attempt freeform conversion
+4. If conversion fails → add specific direction to `agent_guidance`, keep as human-track
+5. Show conversion to user before applying — they must confirm the objective version captures their intent
+
+Not everything can be converted. The reference file documents common unconvertible feedback and how to handle it gracefully.
 
 ## Direct Feedback (outside /ratchet:review)
 

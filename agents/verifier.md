@@ -19,16 +19,20 @@ You receive:
 - Path to `.ratchet/test-suite/manifest.yaml`
 - Current iteration number
 
-## Verification Levels
+## Verification Levels (Short-Circuit Gated)
 
-Run in order. Stop early if Level 1 fails completely.
+Run levels in order. Each level gates the next — if a level fails, skip everything after it.
 
 ### Level 1: Static Checks
-Build, lint, type-check. Captures basic compilation errors.
+Build, lint, type-check. Catches syntax errors and obvious issues.
+
+**Gate:** If Level 1 fails → skip Levels 2, 3, and AI Review. Return immediately with `recommendation: discard` and `composite_score: 0.0`. The executor needs to fix compilation before anything else matters.
 
 ### Level 2: Unit Tests
 Run test files from `.ratchet/test-suite/auto/` that match this WP's acceptance criteria.
 Capture full stdout/stderr as raw_output.
+
+**Gate:** If Level 2 fails → still run Level 3 if available (integration tests may catch different issues), but skip AI Review. Code that fails unit tests isn't ready for quality evaluation.
 
 ### Level 3: Integration Tests
 If integration test files exist and tools are available:
@@ -37,7 +41,9 @@ If integration test files exist and tools are available:
 - Capture results
 - Stop the artifact
 
-### AI Review
+**Gate:** AI Review only runs if ALL auto levels (1 + 2 + 3) pass. Quality evaluation of broken code wastes tokens and produces misleading scores.
+
+### AI Review (only after all auto levels pass)
 For `verifier: ai_review` constraints:
 - Load review prompt from `.ratchet/test-suite/ai-review/`
 - Load the artifact to review

@@ -74,7 +74,7 @@ The approach depends on what the project produces:
 
 If check fails due to missing tool: record as `skipped`, suggest installation.
 
-### 2. AI Review Verifiers (agent track)
+### 2. AI Review Verifiers (agent track — only after all auto levels pass)
 For each `verifier: ai_review` constraint:
 - Load the review prompt from `.ratchet/test-suite/QD-XX.review.md` if available
 - Otherwise construct from artifact + rubric + project context
@@ -117,48 +117,19 @@ Do NOT run these inline. Queue them to `~/.config/ratchet/review_queue.yaml`:
 
 ## Ratchet Loop
 
-When agent-track verification fails AND ratchet is enabled:
+The ratchet loop (retry on failure, keep improvements, discard regressions) is orchestrated by the **execute** skill. See `skills/execute/SKILL.md` for the full loop logic, including stuck detection and early escalation.
 
-```
-best_score = current_composite_score
-for attempt in range(budget):
+This skill (verify) is called BY the execute skill's loop — the verifier subagent runs verification, returns results, and the execute skill makes the keep/discard decision based on composite score.
 
-    # Feed failure details as context, include agent_guidance
-    feedback = format_failures(failed_constraints)
-    result = re_execute(wp, additional_context=feedback + agent_guidance)
-
-    # Re-verify agent-track only
-    scores = verify_agent_track(result)
-    composite = calculate_composite(scores)
-
-    if all_agent_pass(scores):
-        git_commit("wp-{id}: all agent verifications passed")
-        mark_status("agent_complete")
-        queue_human_track_items()
-        break
-
-    elif composite > best_score:
-        git_commit("wp-{id}: improved {best_score:.2f} → {composite:.2f}")
-        best_score = composite
-        # Continue iterating
-
-    else:
-        git_reset()
-        # Try different approach next iteration
-
-if not all_agent_pass after budget:
-    notify_human("wp-{id}: {budget} iterations, best score {best_score}")
-    queue_for_human_review_with_context()
-```
-
-On completion: update intent status in state.yaml:
+On completion: the execute skill updates intent status in state.yaml:
 - All agent-track pass → `agent_complete`
 - Human items queued → `human_review`
 
 ### Git Ratchet (for projects with .git)
-- Each WP iterates on a branch: `ratchet/{wp-id}/iter`
+- Single execution branch: `ratchet/execute`
 - Commit on improvement, reset on no improvement
-- Merge to main when all agent constraints pass
+- Tag checkpoints: `ratchet/wp-{id}/passed` (all constraints pass) or `ratchet/wp-{id}/best` (budget exhausted, best score)
+- Merge `ratchet/execute` to main when all WPs complete with all agent constraints passing
 
 ### Filesystem Ratchet (for non-git projects)
 - `artifacts/staging/` = current attempt
@@ -224,3 +195,4 @@ These appear in `/ratchet:review` for human approval.
 7. **Run all three levels.** Static → Unit → Integration. Don't stop at unit tests. If Level 3 tools are available, USE them.
 8. **Auto-upgrade suggestions.** When queuing a human-track item, check: could this be auto-verified with a tool? If yes, set `could_be_auto: true` and `missing_capability` with the tool name. Suggest the upgrade in `/ratchet:review`.
 9. **Basic functionality = agent responsibility.** Encoding errors, broken buttons, pages not rendering, navigation failures — these are NEVER acceptable as human review items. They must be caught by Level 3 integration tests.
+10. **Short-circuit on auto failure.** If any auto level (1/2/3) fails, do NOT run ai_review. Return the failure immediately so the ratchet loop can retry faster. AI review only runs when all auto verifications pass — evaluating quality on broken code wastes tokens and produces misleading scores.

@@ -25,30 +25,50 @@ You receive:
 
 - Load the WP definition and acceptance criteria
 - Load `agent_guidance` from spec.yaml for project-level context
+- Load test files from `.ratchet/test-suite/` for this WP (check manifest.yaml)
 - If this is a retry iteration, read the previous failure feedback carefully
 
-### 2. Implement
+### 2. Implement with TDD inner loop
 
-Write the code/content needed to satisfy the WP's acceptance criteria.
+Do NOT write all code first and verify at the end. Instead, iterate in small cycles:
 
-Follow the agent_guidance constraints. Use the test files to understand exactly what is expected.
+```
+For each function/component in the WP:
+    1. Read the relevant test(s) — understand what's expected
+    2. Write the minimal implementation
+    3. Run build (Level 1 gate)
+       → If build fails: fix immediately before writing more code
+    4. Run the relevant unit tests
+       → If tests fail: fix before moving to next function
+    5. Move to next function/component
+```
 
-If this is a retry:
+**The test files ARE the specification.** The tests in `.ratchet/test-suite/auto/` define exactly what needs to work. Write code to make them pass, one at a time.
+
+**Level 1 is a hard gate.** After every significant code change, run the build command. Non-compiling code is never acceptable — fix it before doing anything else. Don't accumulate build errors across multiple functions.
+
+**On retry iterations:**
 - Read the specific failure reasons from previous iteration
 - Try a DIFFERENT approach, not the same one harder
 - Focus on the constraints that failed
+- If the previous approach failed at Level 1 repeatedly, consider a fundamentally different architecture
 
-### 3. Self-verify before returning
+### 3. Final verification before handoff
 
-Run basic checks yourself before handing off to the verifier:
-- Does it compile/build?
-- Do the obvious test cases pass?
-- Does it match the acceptance criteria?
+After all functions/components are implemented:
+1. Run full build (Level 1) — must pass
+2. Run all WP test files (Level 2) — should pass
+3. If integration tests exist and tools are available, run those too (Level 3)
+
+Only hand off to the verifier when all locally-runnable tests pass. The verifier should confirm your work, not discover basic failures.
 
 ## Rules
 
 1. **Stay in workspace.** All file operations within the registered workspace path. Never `cd` outside.
 2. **Follow agent_guidance.** It contains project-specific constraints and anti-patterns.
 3. **One WP only.** Don't implement other WPs or modify other WPs' code.
-4. **Use test files as specification.** The tests in `.ratchet/test-suite/` ARE the acceptance criteria — make them pass.
-5. **On retry, change approach.** If the same approach failed, try something different. Read the failure details carefully.
+4. **Tests are the spec.** The tests in `.ratchet/test-suite/` define what must work. Read them first, write code to make them pass.
+5. **Build after every change.** Run the build command after each function/component. Never accumulate broken code.
+6. **Test incrementally.** Run relevant tests after each function. Don't write all code then test at the end.
+7. **On retry, change approach.** If the same approach failed, try something different. Read the failure details carefully.
+8. **Hand off clean.** The verifier should confirm your work, not discover basic failures. All locally-runnable tests must pass before handoff.

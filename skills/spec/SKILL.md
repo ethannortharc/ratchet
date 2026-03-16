@@ -240,27 +240,13 @@ Main agent generates plan.yaml (needs global view of spec + tests):
 
 ### Step 7: Execute with Ratchet Loop
 
-For each parallel group of WPs:
+Invoke the **execute** skill, which orchestrates the full ratchet loop:
+- Per-WP cycle: wp-executor → verifier → keep/discard decision
+- Report generation after each WP
+- Git management (single branch + tagged checkpoints)
+- Status updates and human notification on completion
 
-```
-For each WP (parallel where independent):
-  1. Spawn wp-executor subagent (sonnet)
-     → Implements the WP within workspace
-  2. Spawn verifier subagent (sonnet)
-     → Runs 3-level verification + ai_review
-     → Returns composite score + recommendation
-  3. Ratchet decision:
-     - all_agent_pass → git commit, mark agent_complete
-     - improved → git commit, continue iterating
-     - not improved → git reset, try different approach
-  4. Repeat until pass or budget exhausted
-
-After all WPs:
-  - Spawn report-writer subagent (haiku) for iteration report
-  - Queue human-track items to review_queue.yaml
-  - Update status to agent_complete / human_review
-  - Notify user: "Ready for /ratchet:review"
-```
+See `skills/execute/SKILL.md` for the complete orchestration logic.
 
 ---
 

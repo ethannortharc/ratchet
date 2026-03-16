@@ -64,7 +64,7 @@ User: "I want to build X"
                        │
                        ▼
 ┌─────────────────────────────────────────────────────┐
-│ Execute (autonomous, parallel subagents)            │
+│ Execute (autonomous, execute skill orchestrates)    │
 │                                                     │
 │   Per WP: wp-executor → verifier → ratchet decision│
 │     improved? → git commit (keep)                  │
@@ -165,6 +165,7 @@ ratchet/
 │   ├── spec/SKILL.md             # Main orchestrator
 │   ├── plan/SKILL.md
 │   ├── verify/SKILL.md
+│   ├── execute/SKILL.md           # Ratchet loop orchestration
 │   ├── update/SKILL.md
 │   ├── review/SKILL.md
 │   ├── status/SKILL.md
@@ -183,7 +184,8 @@ ratchet/
 ├── references/
 │   ├── spec-schema.md
 │   ├── inquiry-protocols.md
-│   └── verifier-guide.md
+│   ├── verifier-guide.md
+│   └── feedback-patterns.md
 ├── templates/spec-template.yaml
 ├── DESIGN.md
 └── README.md
@@ -213,8 +215,8 @@ ratchet/
 ├── metrics.yaml
 ├── suggested_constraints.yaml
 ├── reports/
-│   ├── iter-001.md
-│   └── final.md
+│   ├── wp-{id}.md              # Per-WP, generated after each WP
+│   └── iter-{NNN}.md           # Summary, generated after all WPs in a round
 └── artifacts/
 ```
 
