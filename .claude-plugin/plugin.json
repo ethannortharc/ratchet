@@ -5,7 +5,7 @@
   "author": {
     "name": "Ethan"
   },
-  "repository": "https://git.giomni.com/workbench/ratchet",
+  "repository": "https://github.com/ethannortharc/ratchet",
   "license": "MIT",
   "keywords": ["intent", "spec", "verification", "ratchet", "autonomous", "subagent", "workspace"],
   "skills": "./skills/"

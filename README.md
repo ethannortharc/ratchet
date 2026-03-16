@@ -206,12 +206,12 @@ See [DESIGN.md](DESIGN.md) for the complete architecture, schemas, and design de
 ## Install
 
 ```bash
-# Quick test
-claude --plugin-dir /path/to/ratchet
+# From GitHub
+claude mcp add-plugin ratchet -- https://github.com/ethannortharc/ratchet
 
-# Via marketplace
-/plugin marketplace add your-org/marketplace
-/plugin install ratchet@your-marketplace
+# Or clone and use locally
+git clone https://github.com/ethannortharc/ratchet.git
+claude --plugin-dir /path/to/ratchet
 ```
 
 Recommended: also install [Superpower](https://github.com/obra/superpowers) for enhanced TDD and code review within each ratchet iteration.
