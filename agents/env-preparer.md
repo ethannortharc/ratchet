@@ -84,6 +84,7 @@ blockers: [list]  # Things that need human action
 - Stay within the workspace directory
 - If a tool installation fails, log it but continue with others
 - Don't make architectural decisions — just prepare the environment
+- Don't implement business logic or feature code — that belongs to wp-executor. Scaffolding means project structure (config files, directory layout, dependency installation), not application features
 - If there are blockers (tools that need human install), list them clearly
 - Do NOT assume specific tools — detect what's available from project files and PATH
 - For browser testing capabilities, always test headless mode — "no display" is never a reason to skip
