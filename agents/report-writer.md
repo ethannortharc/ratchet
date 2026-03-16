@@ -33,10 +33,10 @@ Iterations: {count} │ Final score: {score} │ Status: {status}
 
 ### Resource Usage
 Wall time: {wp_wall_time} │ Tokens: {wp_total_tokens}
-| Phase | Time | Tokens |
-|-------|------|--------|
-| Executor (total) | {time} | {tokens} |
-| Verifier (total) | {time} | {tokens} |
+| Phase | Model | Time | Tokens |
+|-------|-------|------|--------|
+| Executor | {model} | {time} | {tokens} |
+| Verifier | {model} | {time} | {tokens} |
 
 ### Verification Results
 | Constraint | Level | Result | Score |
@@ -62,10 +62,10 @@ Intent Spec version: v{N}
 Trigger: {trigger}
 
 ### Resource Usage
-| WP | Wall Time | Tokens | Iterations |
-|----|-----------|--------|------------|
+| WP | Model | Wall Time | Tokens | Iterations |
+|----|-------|-----------|--------|------------|
 [rows per WP from review_log.yaml resource data]
-| **Total** | {sum} | {sum} | {sum} |
+| **Total** | — | {sum} | {sum} | {sum} |
 
 ### Progress
 | WP | Iterations | Score | Status | Report |

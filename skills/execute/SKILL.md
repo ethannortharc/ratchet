@@ -123,6 +123,9 @@ Spawn report-writer subagent (haiku) for that WP's results:
 
 ### After All WPs in a Parallel Group Complete
 
+- Spawn report-writer subagent (haiku) in **summary** mode:
+  - Input: intent ID, workspace, review_log.yaml, spec.yaml, round number, trigger
+  - Output: `.ratchet/reports/iter-{NNN}.md` (references per-WP reports)
 - Update intent status based on results:
   - All WPs agent_complete, no human items → `agent_complete`
   - Human items queued → `human_review`
@@ -149,13 +152,16 @@ Track wall time and token consumption for every subagent call. This data feeds i
 Per iteration, record:
 - `executor_time`: wall time for wp-executor subagent
 - `executor_tokens`: token count from wp-executor subagent return metadata
+- `executor_model`: model used (from subagent config)
 - `verifier_time`: wall time for verifier subagent
 - `verifier_tokens`: token count from verifier subagent return metadata
+- `verifier_model`: model used (from subagent config)
 
 Per WP, aggregate:
 - `wp_wall_time`: total elapsed time (start to completion)
 - `wp_total_tokens`: sum of all executor + verifier tokens across iterations
 - `wp_iterations`: number of ratchet iterations
+- `wp_models`: models used (for cost analysis)
 
 Append to `.ratchet/review_log.yaml` alongside verification results. Pass to report-writer for per-WP and summary reports.
 
