@@ -1,103 +1,76 @@
 ---
 name: status
-description: Display multi-intent dashboard showing all Ratchet intents with lifecycle state, progress, pending reviews, blockers, and suggested next actions. Accepts optional intent ID for detailed view. Works from any directory using global state registry.
+description: Display multi-intent dashboard with lifecycle state, WP progress, metrics, pending reviews, blockers, and suggested next actions. Folds in metrics display. Accepts optional intent ID for detailed view.
 ---
 
 # Status — Multi-Intent Dashboard
 
 ## Workspace Resolution
 
-1. If intent ID provided → show detailed view for that intent
-2. If current directory is inside a registered workspace → show that intent expanded, others summarized
-3. If no intent ID and not in workspace → show all intents overview
-
-## Workflow
-
-1. Read `~/.config/ratchet/state.yaml` for intent registry
-2. For each active intent, read `.ratchet/` state files from its workspace
-3. Read `~/.config/ratchet/review_queue.yaml` for pending reviews
+1. If intent ID provided → detailed view for that intent
+2. If in registered workspace → expand that intent, summarize others
+3. Otherwise → overview of all intents
 
 ## Display
 
-### Overview (all intents)
+### Overview
 
 ```
 🔧 Ratchet — [N] intents
 
-📦 prism [software] ● agent_running     priority: normal
-   "Static site for personality tests, starting with Enneagram"
-   Workspace: /Users/coder/projects/prism
-   Progress: 4/6 WPs complete (test suite ✅)
-   Current: wp-05 iter 3, score 0.72 → 0.85
+🔄 prism [software/web_app] agent_running     normal
+   "Static site for personality tests, Enneagram"
+   Progress: 4/6 WPs │ wp-05 iter 3 score 0.85
+   Metrics: 82% auto coverage │ 2.7 avg iterations
    Tags: frontend, chinese, mvp
 
-📖 novel [creative_writing] ⏸ paused
-   "Historical fiction novel set in 1920s Shanghai"
-   Workspace: /Users/coder/projects/novel
-   Progress: outline done, ch1-3 written
-   ⚠️ Blocker: human review needed for QD-02
+⏸ novel [creative_writing] paused
+   "Historical fiction, 1920s Shanghai"
+   ⚠️ Blocker: human review for QD-02
+   Metrics: 45% auto coverage │ 3.1 avg iterations
 
-✅ note-cli [software] ● done
-   Workspace: /Users/coder/projects/note-cli
-   Completed: 2h ago, all constraints passed
+✅ note-cli [software/cli] done
+   Completed 2h ago │ Autonomy: 91%
 
 📊 Summary:
    Pending reviews: 3 (1 blocking)
-   Auto-verification coverage: 82% avg
+   Avg auto coverage: 72%
 
-💡 Suggested next action:
-   → /ratchet:review to process 1 blocking review for "novel"
+💡 → /ratchet:review to process blocking review for "novel"
 ```
 
 ### Detailed View (single intent)
 
-When intent ID is provided or user is in a workspace:
-
 ```
-📦 prism [software] ● agent_running
+📦 prism [software/web_app] 🔄 agent_running
 
-   Intent Spec v2 │ Created: 2026-03-14 │ Last activity: 5 min ago
+   Spec v2 │ Created: 2026-03-14 │ Last: 5 min ago
    Workspace: /Users/coder/projects/prism
    Tags: frontend, chinese, mvp
-   Priority: normal
 
-   📋 Constraints: 7 invariants, 4 quality dimensions
-      Agent track: 9 (auto: 6, ai_review: 3)
-      Human track: 2
+   📋 Constraints: 7 INV + 4 QD = 11 total
+      Agent: 9 (auto: 6, ai_review: 3) │ Human: 2
 
    📦 Work Packages:
       ✅ wp-00  Environment prep          done
-      ✅ wp-01  Core quiz component        done (3 iterations)
-      ✅ wp-02  Scoring engine             done (2 iterations)
+      ✅ wp-01  Core quiz component        done (3 iter)
+      ✅ wp-02  Scoring engine             done (2 iter)
       🔄 wp-03  Results display            iter 3, score 0.85
       ⬜ wp-04  Responsive layout          pending
-      ⬜ wp-05  Polish & accessibility     pending
+      ⬜ wp-05  Polish                     pending
 
-   📊 Ratchet: 8 total iterations, avg 2.7 per WP
-   🎯 Verification: 85% auto coverage
+   📊 Metrics:
+      ⏱  Elapsed: 1h 20m │ Agent autonomous: 1h 15m (94%)
+      ✅ Auto coverage: 82% │ First-pass: 60%
+      🔄 Total iterations: 8 │ Avg per WP: 2.7
+      💡 2 constraints converted human→agent
 
-   Pending reviews: 1 (QD-02: visual design)
-   Suggestions: 2 agent-proposed constraints
+   Reviews: 1 pending (QD-02) │ Suggestions: 2
 
-   💡 Next: wp-03 should complete in ~2 iterations
+   💡 wp-03 should pass in ~1 iteration
 ```
 
-## Lifecycle State Icons
-
-| State | Icon | Color hint |
-|-------|------|------------|
-| draft | 📝 | gray |
-| active | 📋 | blue |
-| agent_running | 🔄 | green |
-| agent_complete | ✅ | green |
-| human_review | 👤 | yellow |
-| done | ✅ | green |
-| paused | ⏸ | gray |
-| archived | 📦 | gray |
-
 ## Rules
-1. Always show pending review count prominently — human attention is the bottleneck.
-2. Show blocking reviews and `current_blocker` as highest priority action.
-3. Show intent ID, workspace path, and lifecycle state for every intent.
-4. If in a registered workspace, auto-expand that intent's details.
-5. Hide archived intents unless explicitly asked.
+1. Always show blockers and pending reviews prominently.
+2. Include metrics inline — no separate /ratchet:metrics needed.
+3. Hide archived intents unless asked.

@@ -1,331 +1,284 @@
 ---
 name: spec
-description: Transform intent into a structured, verifiable Intent Spec (spec.yaml) through a hybrid 3-step flow, then auto-generate the test suite. Use whenever the user describes something they want to build, create, write, or accomplish. Supports workspace registration and intent ID for multi-project management.
+description: Start a new intent. Guides the user through intent convergence, generates a complete Intent Spec with delivery/UI direction, enables thorough section-by-section review, then auto-chains into environment preparation, test suite generation, pipeline validation, planning, and autonomous execution. This is the ONLY command most users need to invoke — everything after confirmation runs autonomously.
 ---
 
-# Spec — Intent Formalization (Hybrid 3-Step) + Test Suite
+# Spec — Intent Formalization + Autonomous Execution Chain
 
 ## Overview
 
-The spec flow has three steps plus automatic test suite generation. The entire process should take under 5 minutes.
+```
+Step 1: Intent Convergence
+  → 2-3 high-level "what" decisions
+Step 2: Generate Intent Spec
+  → Full spec with delivery/UI direction, constraints, agent_guidance
+Step 3: Thorough Review (as long as needed)
+  → Grouped section-by-section confirmation, no time limit
+Step 4-7: Autonomous (human walks away)
+  → Test suite → EVA validation → Plan → Execute with ratchet
+```
 
-```
-Step 1: Intent Convergence (~1 min)
-  → 2-3 high-level "what" decisions via multiple choice
-Step 2: Generate Intent Spec (~2 min)
-  → Full spec.yaml using decisions + industry knowledge
-Step 3: Conversation Review (~2 min)
-  → Section-by-section summary, natural language feedback, incremental patch
-Step 4: Auto-generate Test Suite (automatic)
-  → Concrete test files from each constraint's test_method
-```
+After Step 3, the human is done until results are ready for review.
 
 ---
 
 ## Step 1: Intent Convergence
 
 ### 1.1 Load Profile
-
-Check `~/.config/ratchet/profile.yaml`. If exists, load preferences. If not, proceed with defaults and suggest `/ratchet:profile` afterward.
+Check `~/.config/ratchet/profile.yaml`. If not exists, ask 3 quick preference questions (intervention level, quality vs speed, risk tolerance) and create it.
 
 ### 1.2 Analyze Intent
-
 From the user's description, identify:
 - Project type: `software` | `creative_writing` | `research` | `design` | `general`
+- Delivery format: `web_app` | `cli` | `desktop_app` | `document` | `api` | `library`
 - 2-3 decisions that would fundamentally change the spec
 
 ### 1.3 Present Choices
-
-Ask **at most 3 questions**, using multiple choice when possible:
+Ask **only intent-level decisions** — things that fork the entire spec:
 
 ```
-I'll generate an Intent Spec for this. A few decisions first:
+A few decisions before I generate the Intent Spec:
 
 1. Technical approach
    a) Pure frontend static site (simple, free hosting)
    b) Frontend + backend (data persistence, analytics)
 
 2. Scope
-   a) Start with one [thing], architecture supports expansion
-   b) Build all three [things] from the start
+   a) Start with one test type, architecture supports expansion
+   b) Multi-test from the start
 
 3. Language
    a) Chinese only
    b) Chinese + English
 ```
 
-**Rules for intent convergence:**
-- Only ask about decisions that change the STRUCTURE of the spec (architecture, scope, language, platform)
-- Do NOT ask about design decisions (colors, frameworks, patterns) — those go into agent_guidance
-- If the user's intent is clear enough, skip to Step 2 with zero questions
-- Prefer multiple choice over open-ended
-- One message, all questions at once (not one-at-a-time)
+**Rules:**
+- Only "what" decisions, never "how" (agent decides frameworks, patterns, tools)
+- If intent is clear enough, skip to Step 2 with zero questions
+- Multiple choice preferred, one message with all questions
 
 ### 1.4 Register Workspace
-
-After intent convergence (or immediately if no questions needed):
-
 ```
-Intent ID? [auto-generated from project name, user can override]
-Workspace location?
-  [1] Current directory: /Users/coder/projects/prism
-  [2] Create new: ~/projects/[intent-id]
-  [3] Custom path
+Intent ID? [auto-generated from name, user can override]
+Workspace? [current dir / create new / custom path]
 ```
-
-Register in `~/.config/ratchet/state.yaml` with absolute path. All subsequent operations for this intent are locked to this workspace.
+Register in `~/.config/ratchet/state.yaml` with absolute path. Status: `draft`.
 
 ---
 
 ## Step 2: Generate Intent Spec
 
 ### 2.1 Environment Discovery
+Detect available runtimes, tools, and capabilities.
 
-```bash
-which go 2>/dev/null && go version
-which node 2>/dev/null && node --version
-which python3 2>/dev/null && python3 --version
-which docker 2>/dev/null && docker --version
-which git 2>/dev/null && git --version
+### 2.2 Environment Negotiation (Maximum Coverage)
+Identify what "running the artifact" looks like for this project. Aggressively recommend tools that unlock auto-verification:
+```
+Current auto coverage: 65%
+With Playwright: 90% (+25% — catches broken buttons, rendering errors, navigation)
+  Install: npx playwright install
+  I can install this: yes
+
+Without it, these become HUMAN review items:
+  - Page loads correctly
+  - Buttons functional
+  - Navigation works
 ```
 
-### 2.2 Environment Negotiation (Maximum Coverage Principle)
-
-The agent's goal is to **maximize automated verification coverage** — leave as little as possible to human review. This applies to ALL project types.
-
-**Step A: Identify what "running the artifact" looks like for this project:**
-
-| Project produces | How to verify it actually works | Tool needed |
-|-----------------|-------------------------------|-------------|
-| Web app/site | Start dev server + browser tests | Playwright |
-| CLI tool | Run with test inputs, check output | shell (built-in) |
-| API service | Start server + call endpoints | curl (built-in) |
-| Library/package | Run example code, import tests | project runtime |
-| Document/report | Validate structure, format, length | shell + LLM |
-| Creative writing | Check consistency, format, word count | LLM |
-
-**Step B: Calculate coverage with and without additional tools:**
-
-```
-Current auto-verification coverage: X%
-With recommended tools: Y%
-
-Strongly recommended:
-  ⬜ [tool] — unlocks N auto-verifications
-     What it enables: [e.g. "end-to-end browser tests — catches rendering errors, broken buttons, navigation issues"]
-     Install: [one-line command]
-     I can install this myself: [yes/no]
-
-Without these tools, the following constraints will require HUMAN verification
-instead of automated testing:
-  - [constraint that could be auto but lacks tooling]
-```
-
-**Step C: Be aggressive.** If a tool can be installed by the agent, offer to install it immediately. The goal is to push `human` track items toward `auto` track wherever possible. Every constraint left on human track is a potential delay.
-
-**Key rule: "Basic functionality" must ALWAYS be auto-verifiable.** For any project that produces a runnable artifact, the spec MUST include invariants that verify the artifact actually runs and basic interactions work. These are NOT optional — they are industry-standard baseline tests that catch encoding errors, broken buttons, navigation failures, etc.
+**Basic functionality MUST be auto-verifiable.** If tools are missing, make this explicit.
 
 ### 2.3 Generate Constraints
+For every constraint:
+- `check`, `test_method` (multi-level: static → unit → integration), `tools_required` (structured), `ratchet_metric`
+- Assign track (agent preferred) and verifier (auto > ai_review > human)
 
-Using the user's intent + Step 1 decisions + industry knowledge (read `references/inquiry-protocols.md`) + profile preferences:
-
-1. Generate ALL constraints with confidence levels: ✅ high | ⚠️ medium | ❓ low
-2. Assign track and verifier per constraint (prefer: auto > ai_review > human)
-3. For each constraint, define:
-   - `check`: the command or method to verify
-   - `test_method`: detailed description of what tests should cover (scenarios, edge cases, expected behaviors). This is what the agent reads when generating the test suite.
-   - `tools_required`: structured list with id, install hint, and agent_can_install flag
-   - `ratchet_metric`: quantified progress indicator
-
-**Multi-level test_method (mandatory for software projects, encouraged for all):**
-
-Every constraint's `test_method` should include the highest verification level achievable:
-
-```
-Level 1 — Static: build, lint, type-check (catches syntax/type errors)
-Level 2 — Unit: isolated function tests (catches logic errors)
-Level 3 — Integration: actually run the artifact and verify behavior (catches rendering, interaction, wiring errors)
-```
-
-Example for a web project constraint "results page displays correctly":
-```yaml
-test_method: |
-  Level 1: TypeScript compiles without errors
-  Level 2: Unit test — scoring function returns correct type for known inputs
-  Level 3: Integration — start dev server, navigate to results page after completing quiz,
-           verify: page renders without errors, all 9 type descriptions visible,
-           primary type highlighted, retest button clickable, share button functional
-```
-
-**The agent MUST auto-generate Level 3 tests when the environment supports it.** Basic functionality issues (broken buttons, encoding errors, pages not rendering) should NEVER reach human review — they are auto-verifiable with the right tools.
-
-### 2.4 Generate agent_guidance
-
-Create the `agent_guidance` section — a natural language prompt giving the agent project context, key constraints, and direction when stuck:
+### 2.4 Generate Delivery Direction (conditional)
+**For projects with user-facing interface**, generate `delivery` section:
 
 ```yaml
-agent_guidance: |
-  You are working on intent "[name]".
-  [What the project is in 1-2 sentences]
-
-  [Key constraints and direction]
-
-  When stuck on [X], try [Y].
-
-  Do NOT:
-  - [Anti-patterns specific to this project]
+delivery:
+  format: web_app
+  ui_direction:
+    style: "Minimal, calming, mobile-first"
+    key_screens:
+      - name: home
+        purpose: "Welcome + start quiz"
+        elements: [title, description, start_button]
+      - name: quiz
+        purpose: "Answer questions"
+        elements: [question_text, options, progress_bar, back_button]
+      - name: results
+        purpose: "Show personality type"
+        elements: [primary_type, description, all_types_ranking, retest_button, share_button]
+    user_journey: "home → quiz (45 questions) → results"
+    mood: "Professional but warm, light palette with accent colors per type"
+    anti_patterns: ["No gamification", "No countdown timers", "No social pressure"]
 ```
 
-### 2.5 Configure Ratchet
+For CLI: `cli_direction` with interaction style and output format.
+For non-UI: skip this section.
 
-```yaml
-ratchet:
-  enabled: true
-  backend: git  # auto-detect: .git exists? git : filesystem
-  default_budget: # software: 8-10, creative: 5, research: 5
-  composite_score:
-    method: weighted_average
-    weights:
-      auto_pass_rate: 0.5
-      ai_review_avg: 0.3
-```
+### 2.5 Generate agent_guidance
+Natural language prompt for agent context, constraints, and stuck-recovery.
 
-### 2.6 Write spec.yaml
-
-Create `.ratchet/` directory in the registered workspace if needed. Write spec.yaml per schema in `references/spec-schema.md`.
+### 2.6 Configure Ratchet + Write spec.yaml
 
 ---
 
-## Step 3: Conversation Review
+## Step 3: Thorough Review
 
-Present the Intent Spec section-by-section in conversation. Do NOT show raw YAML — show a readable summary.
+**No time limit.** This is the highest-ROI human investment. Some sections pass in seconds, others need detailed discussion. Both are fine.
 
-### 3.1 Present Summary
+### Grouped Confirmation
 
+**For ≤20 constraints: conversational**
+
+Present section-by-section, wait for confirmation on each:
+
+**Group A: Overview + Delivery**
 ```
-📋 Intent Spec for "[name]" (v1)
+📋 Prism — Online Personality Tests (v1)
+What: Static web app for Enneagram personality test, Chinese, 45 questions
 
-What I'll build:
-  [2-3 sentences]
+🖥️ Delivery:
+  web_app │ SPA │ mobile-first
+  Journey: home → quiz (45q) → results
+  Screens: home (3 elements), quiz (4 elements), results (5 elements)
+  Mood: minimal, calming, professional
 
-🔒 Invariants (N) — all look right?
-  INV-01  [claim]                    auto │ [tool]
-  INV-02  [claim]                    auto │ [tool]
-  ...
-
-📊 Quality Dimensions (N) — thresholds OK?
-  QD-01  [dimension]    ai_review    threshold: 4/5
-  QD-02  [dimension]    human        threshold: 3/5
-  ...
-
-🎯 Verification Coverage
-  auto: X% │ ai_review: Y% │ human: Z%
-
-🔄 Ratchet: [budget] iterations per work package
-
-⚠️ I assumed:
-  1. [assumption with medium confidence]
-
-Type feedback to adjust, or "approve" to continue.
+This interaction model right? Any screens missing?
 ```
 
-### 3.2 Process Feedback
+**Group B: Core Functionality (N invariants)**
+```
+🔒 Core (auto-verified):
+  INV-01  Page loads without errors          vitest + playwright
+  INV-02  All 45 questions display            vitest
+  INV-03  Scoring logic correct               vitest (unit + edge cases)
+  INV-04  Results page renders all 9 types    vitest + playwright
+  INV-05  Retest button works                 playwright
+  INV-06  Share button works                  playwright
+  INV-07  Responsive on mobile               playwright
 
-When the user provides feedback:
-- **Incrementally patch** the spec — do NOT regenerate from scratch
-- Show what changed: "Updated INV-03 threshold from 80% to 90%"
-- Re-present only the changed section
-- Ask again: "Anything else, or approve?"
+All auto-verified with multi-level tests. Missing anything?
+```
 
-### 3.3 Finalize
+**Group C: Quality (N quality_dimensions)**
+```
+📊 Quality:
+  QD-01  Type descriptions accurate    ai_review  4/5
+  QD-02  Visual design matches mood    human      3/5
+  QD-03  Accessibility basics          auto (lighthouse)
 
-On approval:
-1. Ensure spec.yaml is written/updated
-2. Update intent status to `active` in `~/.config/ratchet/state.yaml`
-3. Record metrics in `.ratchet/metrics.yaml`
-4. Proceed to Step 4 (test suite generation)
+Thresholds OK?
+```
 
----
+**Group D: Coverage + Guidance**
+```
+🎯 Coverage: auto 80% │ ai_review 10% │ human 10%
+🔄 Ratchet: 8 iterations per WP
+⚠️ Assumed: [low-confidence items]
 
-## Step 4: Auto-generate Test Suite
+Approve to start autonomous execution, or adjust anything.
+```
 
-After spec confirmation, automatically generate concrete test files from each constraint's `test_method`. This happens without user intervention.
+**For >20 constraints: generate HTML review page**
 
-### 4.1 Create test-suite directory
-
+Generate `.ratchet/spec-review.html` and open in browser:
 ```bash
-mkdir -p .ratchet/test-suite
+open .ratchet/spec-review.html
 ```
 
-### 4.2 Generate test files
+The HTML page shows:
+- Grouped constraints (expandable)
+- Delivery/UI direction with any mockup references
+- Modification text input per section
+- "Approve & Start" button → writes `.ratchet/approved` marker file
+- Agent detects the marker and proceeds to Step 4
 
-For each constraint:
+### Process Feedback
+- Incrementally patch spec — never regenerate
+- Show what changed
+- Re-confirm only the changed section
 
-**`verifier: auto`** → Generate executable test file:
-- Read `test_method` for scenarios and edge cases
-- Use `tools_required` to determine test framework (vitest, pytest, go test, etc.)
-- Generate runnable but FAILING tests (TDD red phase)
-- File: `.ratchet/test-suite/INV-01.test.{ts,py,go,...}`
+### Finalize
+On approval: update status to `active`, proceed to autonomous execution.
 
-**`verifier: ai_review`** → Generate structured review prompt:
-- Include rubric, threshold, what to evaluate
-- File: `.ratchet/test-suite/QD-01.review.md`
+---
 
-**`verifier: human`** → Generate review checklist:
-- Clear criteria, where to find artifacts, pass/fail guidance
-- File: `.ratchet/test-suite/QD-02.checklist.md`
+## Steps 4-7: Autonomous Execution Chain
 
-### 4.3 Write manifest
+**The human is done. Everything below runs without user intervention.**
 
-Create `.ratchet/test-suite/manifest.yaml`:
-```yaml
-generated: [datetime]
-spec_version: 1
-project_type: [type]
-test_runner: [vitest | pytest | go test | ...]
-entries:
-  - constraint_id: INV-01
-    type: auto
-    file: INV-01.test.ts
-    status: generated
-  - constraint_id: QD-01
-    type: ai_review
-    file: QD-01.review.md
-    status: generated
+### Step 4: Environment Preparation + Test Suite (parallel)
+
+Spawn two subagents in parallel:
+- **env-preparer** (sonnet): Install tools, scaffold project, validate build
+- **test-generator** (sonnet): Generate test files from test_method fields
+
+Wait for both to complete.
+
+### Step 5: EVA — Pipeline Validation
+
+Main agent validates the verification pipeline works end-to-end:
+1. Read env-preparer results — any blockers?
+2. Read test-generator manifest — all constraints covered?
+3. Run test pipeline dry-run: `[test-runner] --passWithNoTests` or equivalent
+4. If any infrastructure issues: fix them here, not during execution
+5. Write `.ratchet/pre-validation.log`
+
+If blockers require human action (tool that can't be auto-installed), pause and notify user.
+
+### Step 6: Generate Plan
+
+Main agent generates plan.yaml (needs global view of spec + tests):
+- Decompose into work packages by project type
+- Reference test suite files in acceptance criteria
+- Include workspace path in every WP
+- Set dependency graph and parallel groups
+- Update status to `agent_running`
+
+### Step 7: Execute with Ratchet Loop
+
+For each parallel group of WPs:
+
 ```
+For each WP (parallel where independent):
+  1. Spawn wp-executor subagent (sonnet)
+     → Implements the WP within workspace
+  2. Spawn verifier subagent (sonnet)
+     → Runs 3-level verification + ai_review
+     → Returns composite score + recommendation
+  3. Ratchet decision:
+     - all_agent_pass → git commit, mark agent_complete
+     - improved → git commit, continue iterating
+     - not improved → git reset, try different approach
+  4. Repeat until pass or budget exhausted
 
-### 4.4 Report and continue
-
-```
-✅ Test suite generated: [N] test files
-   auto: [N] executable tests
-   ai_review: [N] review prompts
-   human: [N] checklists
-
-Ready for /ratchet:plan to decompose into work packages.
+After all WPs:
+  - Spawn report-writer subagent (haiku) for iteration report
+  - Queue human-track items to review_queue.yaml
+  - Update status to agent_complete / human_review
+  - Notify user: "Ready for /ratchet:review"
 ```
 
 ---
 
 ## Workspace Resolution
 
-When this skill is invoked:
-1. If intent ID provided as argument → look up workspace in state.yaml
-2. If current directory is inside a registered workspace → use that intent
-3. If creating new → register workspace (Step 1.4)
-
-**Agent execution constraint:** All file operations must stay within the registered workspace directory.
+1. If intent ID provided → look up in state.yaml
+2. If current directory inside registered workspace → use that intent
+3. If creating new → register (Step 1.4)
 
 ---
 
 ## Rules
 
-1. **Max 3 questions in Step 1.** If you need more, you're not using industry knowledge enough.
-2. **Questions are about "what", not "how".** Architecture, scope, platform — not design or implementation.
-3. **Every constraint gets track + ratchet_metric + test_method + tools_required.** No exceptions.
-4. **Patch, don't regenerate.** In Step 3, apply feedback incrementally.
-5. **Under 5 minutes** for the entire process (Steps 1-3). Step 4 runs automatically.
-6. **agent_guidance replaces exploration_hints.** Write a natural language prompt, not a flat list.
-7. **Register workspace.** Every intent gets a locked absolute path.
-8. **Maximum coverage.** Aggressively request tools to maximize auto-verification. Basic functionality (runs, renders, navigates, buttons work) MUST be auto-verifiable. If a tool is missing, tell the user what it unlocks and offer to install it.
-9. **Multi-level test_method.** For every constraint, push to the highest verification level the environment supports (static → unit → integration).
+1. **Intent convergence is fast.** 2-3 questions max, "what" not "how".
+2. **Review is thorough.** No time limit. Grouped confirmation. Discuss as long as needed.
+3. **Every constraint gets test_method + tools_required.** No exceptions.
+4. **Delivery direction for UI projects.** Key screens, user journey, mood — not pixels.
+5. **Maximum coverage.** Basic functionality MUST be auto-verifiable.
+6. **EVA: validate pipeline before execution.** Catch infrastructure issues early.
+7. **Auto-chain after approval.** Human says "approve" once, then walks away.
+8. **Subagents for parallelism.** env-preparer + test-generator in parallel; independent WPs in parallel.

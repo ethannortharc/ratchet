@@ -1,88 +1,69 @@
 ---
 name: getting-started
-description: Bootstrap for Ratchet. Loaded at session start. Establishes intent-driven execution with workspace management, lifecycle states, dual-track verification, and ratchet optimization loops.
+description: Bootstrap for Ratchet. Loaded at session start. Establishes the two-touchpoint model — humans provide direction (spec) and evaluate results (review), agent handles everything else.
 ---
 
 # Ratchet — Session Bootstrap
 
 You have the Ratchet plugin. It turns intent into verified results through autonomous iteration.
 
-## Core Loop
+## How It Works
 
 ```
-User describes intent → Hybrid 3-step formalization (~5 min)
-→ Workspace registered → Test suite auto-generated
-→ Plan created → Agent iterates autonomously (ratchet: keep improvements, discard failures)
-→ Human reviews async when available → Feedback triggers next round
+/ratchet:spec "describe what you want"
+  → Guided conversation to define intent (~5-30 min, as thorough as needed)
+  → Confirm → Agent runs everything autonomously
+  → Agent notifies when ready for review
+
+/ratchet:review
+  → See results with proof of work
+  → Give feedback → triggers another autonomous round
+  → Or just say the feedback directly in conversation
 ```
+
+That's it. Two commands for most workflows.
 
 ## Commands
 
-- `/ratchet:spec` — Intent → structured Intent Spec + test suite (start here)
-- `/ratchet:plan` — Intent Spec → work packages with dependencies
-- `/ratchet:verify` — Run verification + ratchet optimization loop
-- `/ratchet:review` — Process human review queue (cross-intent)
-- `/ratchet:status` — Multi-intent dashboard with lifecycle states
-- `/ratchet:report` — Generate iteration/project report with proof of work
-- `/ratchet:profile` — Personal preferences (one-time setup)
-- `/ratchet:metrics` — Interaction and automation statistics
-- `/ratchet:update` — Update Intent Spec mid-project (triggers new iteration)
-- `/ratchet:pause` — Pause an intent's execution
-- `/ratchet:resume` — Resume a paused intent
-
-## Workspace Management
-
-Each intent is registered with a unique ID and locked to an absolute workspace path. All operations stay within the workspace. The global registry at `~/.config/ratchet/state.yaml` tracks all intents.
-
-```
-/ratchet:status              → show all intents
-/ratchet:status prism        → show prism details
-/ratchet:verify prism        → verify prism (from any directory)
-```
-
-When no intent ID is given, Ratchet resolves by current directory → registry lookup → ask.
-
-## Intent Lifecycle
-
-```
-draft → active → agent_running → agent_complete → human_review → done
-                      ↑                │
-                      └── ratchet ──────┘
-
-any → paused (user pauses)
-paused → active (user resumes)
-any → archived (user archives)
-```
+| Command | When to use |
+|---------|-------------|
+| `/ratchet:spec` | Start something new |
+| `/ratchet:review` | Evaluate completed work |
+| `/ratchet:status` | Check progress anytime |
+| `/ratchet:pause` | Pause execution |
+| `/ratchet:resume` | Resume execution |
 
 ## Giving Feedback
 
-Users can provide feedback in TWO ways — both are equally valid:
+Two equally valid ways:
 
-**Direct conversation (preferred when actively working):**
-Just tell the agent the issue: "results page has encoding errors" or "retest button doesn't work." The agent automatically runs the feedback conversion engine — converts to a constraint, updates the Intent Spec, and fixes the issue. No need for `/ratchet:review`.
+**In conversation:** Just say it — "the results page has encoding errors" or "make the quiz questions bigger." Agent automatically converts feedback to constraints, updates spec, and re-executes.
 
-**Formal review queue (`/ratchet:review`):**
-For processing accumulated review items, especially across multiple intents or when returning after a break.
+**Via `/ratchet:review`:** For processing accumulated review items, especially across multiple intents or after a break.
 
-Both paths trigger the same feedback → constraint → iteration loop.
+## What Happens After Spec Confirmation
 
-## Automatic Behavior
+The agent automatically chains (no human intervention needed):
+1. Environment preparation (install tools, scaffold)
+2. Test suite generation (from spec constraints)
+3. Pipeline validation (verify infrastructure works)
+4. Plan decomposition (work packages with dependencies)
+5. Ratchet execution (implement → verify → keep/discard → repeat)
+6. Report generation (with proof of work)
+7. Human review queue (only subjective/taste items)
 
-When the user describes something they want to build or create, suggest `/ratchet:spec` before jumping into execution. If `.ratchet/spec.yaml` exists in the current directory, reference it when executing tasks.
+Uses subagents for parallel execution where possible.
 
 ## Key Principles
 
-1. **Hybrid 3-step.** Intent convergence (2-3 decisions) → Generate Intent Spec → Conversation review + patch.
-2. **Test suite first.** Auto-generated after spec approval. Tests exist before implementation starts.
-3. **Maximum coverage.** Agent aggressively maximizes auto-verification. Request tools, run integration tests, never leave basic functionality to human review. Verification runs three levels: static → unit → integration.
-4. **Dual-track.** Agent-track constraints run continuously. Human-track queues async.
+1. **Human provides direction and taste.** Agent does everything else.
+2. **Spec review is thorough.** No time limit. The more you invest here, the less rework.
+3. **Maximum coverage.** Agent aggressively maximizes auto-verification. Basic functionality is never left to human review.
+4. **EVA.** Verify that the testing infrastructure works BEFORE execution.
 5. **Ratchet.** Every iteration either improves (keep) or doesn't (discard). Progress is monotonic.
-6. **Workspace isolation.** Each intent locked to a directory. Agent never wanders outside.
-7. **Proof of work.** Reports include raw verification outputs, not just pass/fail counts.
-8. **Be aggressive.** Request better tools to increase automation. Propose new constraints when you discover issues. Convert human feedback into agent-verifiable constraints.
+6. **Proof of work.** Reports include actual test output, not just pass/fail.
 
 ## State Locations
 
-- Plugin config: `~/.config/ratchet/` (profile, intent registry, review queue)
-- Project state: `.ratchet/` in workspace directory (Intent Spec, test suite, plan, logs, artifacts)
-- Read DESIGN.md for full architecture details.
+- Global: `~/.config/ratchet/` (profile, intent registry, review queue)
+- Per-intent: `.ratchet/` in workspace (spec, test suite, plan, logs, reports)

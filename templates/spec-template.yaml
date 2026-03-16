@@ -51,6 +51,18 @@ quality_dimensions: []
 
 preferences: []
 
+# delivery:                    # Uncomment for projects with user-facing output
+#   format: web_app
+#   ui_direction:
+#     style: ""
+#     key_screens:
+#       - name: ""
+#         purpose: ""
+#         elements: []
+#     user_journey: []
+#     mood: ""
+#     anti_patterns: []
+
 agent_guidance: |
   # Agent context and constraints for this intent.
   # Include: what the project is, key constraints, what to do when stuck.

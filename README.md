@@ -5,98 +5,68 @@ Intent-driven execution with autonomous optimization. Describe what you want. Th
 ## How It Works
 
 ```
-You: "Build a Go CLI tool for managing notes with tags and search"
+You: /ratchet:spec "Build a personality test website called Prism"
 
-Ratchet: hybrid 3-step Intent Spec (2 quick decisions, generates spec, you review ~5 min)
+Ratchet: Asks 2-3 direction questions, generates full Intent Spec
+         with UI direction, constraints, and verification plan.
+         You review thoroughly — take 5 minutes or 30, no rush.
 
-→ Test suite auto-generated from spec constraints
-→ Workspace registered, agent works autonomously for hours
-→ Ratchet loop: try → verify → improved? keep : discard → repeat
-→ Proof of work: reports include raw test outputs, not just pass/fail
-→ You review async when convenient
-→ Your feedback becomes new constraints → next iteration round
-→ Done.
-```
+You: "Looks good, start."
 
-Like Karpathy's [autoresearch](https://github.com/karpathy/autoresearch), but for any project — software, writing, research — not just ML experiments.
+=== You walk away ===
 
-## Install
+Ratchet: Installs tools, generates tests, validates pipeline,
+         decomposes into work packages, executes with ratchet loop
+         (try → verify → improved? keep : discard → repeat),
+         captures proof of work, queues human review items.
 
-### Quick test (no setup)
-```bash
-claude --plugin-dir /path/to/ratchet
-```
+=== Later ===
 
-### Permanent install
-```bash
-# Add marketplace (replace with your Gitea/GitHub URL)
-/plugin marketplace add your-org/marketplace
+Ratchet: "Ready for review."
 
-# Install
-/plugin install ratchet@your-marketplace
+You: /ratchet:review
+     "Search feels slow" → auto-converted to "search < 200ms" constraint
+     → Another autonomous round → Done.
+
+Total human time: ~45 min. Total agent time: hours.
 ```
 
 ## Commands
 
 ```
-/ratchet:spec      Intent → Intent Spec + test suite (hybrid 3-step)
-/ratchet:plan      Intent Spec → work packages with dependencies
-/ratchet:verify    Three-tier verification + ratchet optimization loop
-/ratchet:review    Process human review queue (cross-intent)
-/ratchet:status    Multi-intent dashboard with lifecycle states
-/ratchet:report    Iteration and project reports with proof of work
-/ratchet:update    Update Intent Spec mid-project (triggers new round)
-/ratchet:profile   Personal preferences (one-time)
-/ratchet:metrics   Interaction + automation statistics
-/ratchet:pause     Pause an intent's execution
-/ratchet:resume    Resume a paused intent
+/ratchet:spec      Start new intent (main command — everything chains from here)
+/ratchet:review    Review results, give feedback
+/ratchet:status    Check progress anytime
+/ratchet:pause     Pause execution
+/ratchet:resume    Resume execution
 ```
 
-Most commands accept an optional intent ID (e.g., `/ratchet:status prism`).
+Most workflows use only `spec` and `review`.
 
 ## Key Ideas
 
-**Hybrid 3-step spec.** Intent convergence (2-3 "what" decisions) → generate complete Intent Spec → conversation review with incremental patching. Under 5 minutes.
+**Two human touchpoints.** Spec (provide direction + taste) and review (evaluate results). Everything between runs autonomously.
 
-**Test suite first.** After spec approval, auto-generate test files from each constraint's `test_method`. Tests exist before implementation, so the ratchet loop has real signals from iteration 1.
+**Thorough spec, fast execution.** No time limit on spec review — invest here to avoid rework. Agent generates complete spec with delivery/UI direction, constraints, multi-level test methods.
 
-**Workspace isolation.** Each intent registered with absolute path. Agent stays within workspace. Multi-intent management from any directory via `/ratchet:status`.
+**Maximum coverage.** Agent aggressively maximizes auto-verification. Basic functionality (pages load, buttons work, navigation works) is NEVER left to human review. Agent requests tools to enable this.
 
-**Dual-track verification.** Agent-track constraints (auto + ai_review) run continuously, 24/7. Human-track constraints queue asynchronously. Agent never blocks waiting for you.
+**EVA (Early Verification Architecture).** Before execution, validate that all tools are installed, tests can run, and build works. Catch infrastructure problems early.
 
-**Ratchet loop.** Every work package iterates: execute → verify → improved? keep (git commit) : discard (git reset). Progress only moves forward, like a ratchet wrench.
+**Ratchet loop.** Every iteration either improves (git commit) or doesn't (git reset). Progress only moves forward.
 
-**Proof of work.** Reports include raw verification outputs — actual test results, ai_review justifications — not just "4/6 passed."
+**Subagent architecture.** Parallel execution via specialized subagents — env-preparer, test-generator, wp-executor, verifier, report-writer.
 
-**Feedback conversion.** When you review and say "search feels slow", the system converts that to "search < 200ms" — a constraint the agent can verify automatically. Over time, human-track shrinks, agent-track grows.
-
-**Intent lifecycle.** Full state machine: draft → active → agent_running → agent_complete → human_review → done. Plus pause/resume.
+**Direct feedback.** Say issues directly in conversation — no need for formal commands. "The results page is broken" triggers the same feedback→constraint→iteration loop.
 
 ## Architecture
 
 ```
-~/.config/ratchet/              Global state (profile, intent registry, review queue)
-<workspace>/.ratchet/           Project state (Intent Spec, test suite, plan, logs, artifacts)
+~/.config/ratchet/              Global (profile, intent registry, review queue)
+<workspace>/.ratchet/           Per-intent (spec, test suite, plan, logs, reports)
 ```
 
-See [DESIGN.md](DESIGN.md) for full architecture, schemas, and design decisions.
-
-## Comparison
-
-|  | Superpower | Kiro | autoresearch | Ratchet |
-|--|-----------|------|-------------|---------|
-| Brainstorm | ✅ Socratic | ✅ Req-first | ❌ | ✅ Generate-first |
-| Structured spec | ❌ Text plan | ⚠️ User stories | ⚠️ program.md | ✅ Dual-track + verifiers |
-| Test suite first | ❌ | ❌ | ❌ | ✅ Auto-generated |
-| Ratchet loop | ❌ | ❌ | ✅ | ✅ |
-| Workspace isolation | ❌ | ✅ IDE | ✅ git branch | ✅ Registry-based |
-| Cross-domain | ❌ Software | ❌ Software | ❌ ML only | ✅ Any task |
-| Dual-track verify | ❌ | ❌ | ❌ | ✅ |
-| Proof of work | ❌ | ❌ | ✅ results.tsv | ✅ Rich reports |
-| Feedback→constraint | ❌ | ❌ | ❌ | ✅ |
-| Multi-intent | ❌ | ❌ | ❌ | ✅ |
-
-Ratchet complements Superpower. Use both — Superpower's TDD and code review enhance execution quality within each ratchet iteration.
+See [DESIGN.md](DESIGN.md) for full architecture.
 
 ## License
 

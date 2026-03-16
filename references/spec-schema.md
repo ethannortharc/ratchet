@@ -68,8 +68,22 @@ quality_dimensions:
 preferences:
   - string
 
+delivery:                     # Conditional — only for projects with user-facing output
+  format: string              # web_app | cli | desktop_app | document | api | library
+  ui_direction:               # Only for UI projects (web_app, desktop_app, mobile)
+    style: string             # "minimal, calming, mobile-first"
+    key_screens:
+      - name: string
+        purpose: string
+        elements: [string]
+    user_journey: [string]    # Flow steps: "home → quiz → results"
+    mood: string              # Design mood/feeling
+    anti_patterns: [string]   # Things to avoid
+  cli_direction:              # Only for CLI projects
+    interaction: string       # "interactive prompts" | "flags only" | "REPL"
+    output_style: string      # "table" | "json" | "plain"
+
 agent_guidance: string        # Natural language prompt for the agent — context, constraints, what to do when stuck
-                              # Replaces the flat exploration_hints list with a richer, more natural format
 
 ratchet:
   enabled: bool
