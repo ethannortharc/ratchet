@@ -19,7 +19,7 @@ Auto verifiers MUST be executable commands that return exit code 0 (pass) or non
 
 ### Verification Capabilities
 
-Do not hardcode specific tools. Instead, identify what **capability** is needed and use whatever tool the environment provides (as recorded in `.ratchet/pre-validation.log`).
+Do not hardcode specific tools. Instead, identify what **capability** is needed and use whatever tool the environment provides (as recorded in `.ratchet/{intent-id}/pre-validation.log`).
 
 | Capability | What it verifies | How to find |
 |-----------|-----------------|-------------|

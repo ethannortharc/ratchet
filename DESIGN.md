@@ -203,22 +203,25 @@ ratchet/
 ### Per-Intent Workspace
 ```
 <workspace>/.ratchet/
-├── spec.yaml
-├── plan.yaml
-├── test-suite/
-│   ├── manifest.yaml
-│   ├── auto/                     # Executable test files
-│   ├── ai-review/                # Review prompts
-│   └── human/                    # Checklists
-├── pre-validation.log
-├── review_log.yaml
-├── metrics.yaml
-├── suggested_constraints.yaml
-├── reports/
-│   ├── wp-{id}.md              # Per-WP, generated after each WP
-│   └── iter-{NNN}.md           # Summary, generated after all WPs in a round
-└── artifacts/
+└── {intent-id}/                  # Each intent gets its own subdirectory
+    ├── spec.yaml
+    ├── plan.yaml
+    ├── test-suite/
+    │   ├── manifest.yaml
+    │   ├── auto/                 # Executable test files
+    │   ├── ai-review/            # Review prompts
+    │   └── human/                # Checklists
+    ├── pre-validation.log
+    ├── review_log.yaml
+    ├── metrics.yaml
+    ├── suggested_constraints.yaml
+    ├── reports/
+    │   ├── wp-{id}.md            # Per-WP, generated after each WP
+    │   └── iter-{NNN}.md         # Summary, generated after all WPs in a round
+    └── artifacts/
 ```
+
+Multiple intents can share the same workspace directory. Each intent's artifacts are isolated in its own subdirectory (e.g., `.ratchet/prism-enneagram/`, `.ratchet/prism-mbti/`).
 
 ## Commands
 

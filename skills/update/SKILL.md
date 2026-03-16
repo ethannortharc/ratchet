@@ -21,7 +21,7 @@ description: Update a project's Intent Spec mid-execution. Add constraints, modi
 
 ## Workflow
 
-1. Load current `.ratchet/spec.yaml` (Intent Spec) from resolved workspace
+1. Load current `.ratchet/{intent-id}/spec.yaml` (Intent Spec) from resolved workspace
 2. Analyze the user's update request
 3. Determine what changes:
    - New invariant? → add with track + verifier + test_method + tools_required
@@ -30,7 +30,7 @@ description: Update a project's Intent Spec mid-execution. Add constraints, modi
    - New feature? → add constraints + will need new WP in plan
 4. Show diff to user for confirmation
 5. Increment `spec_version`, append to `changelog`
-6. **Regenerate affected test files** in `.ratchet/test-suite/` and update manifest
+6. **Regenerate affected test files** in `.ratchet/{intent-id}/test-suite/` and update manifest
 7. If plan.yaml exists, flag that `/ratchet:plan` should be re-run to add new WPs
 8. If agent is running, the next iteration will pick up the new spec version
 9. Update `last_activity` in `~/.config/ratchet/state.yaml`

@@ -13,7 +13,7 @@ You prepare the development environment for a Ratchet intent.
 ## Input
 
 You receive:
-- Path to `.ratchet/spec.yaml` (Intent Spec)
+- Path to `.ratchet/{intent-id}/spec.yaml` (Intent Spec)
 - Workspace absolute path
 
 ## Tasks
@@ -24,7 +24,7 @@ Read spec.yaml, collect all `tools_required` entries across invariants and quali
 
 - Check if already installed (use appropriate commands for the tool type)
 - If missing and `agent_can_install: true` → install using the `install` hint
-- If missing and `agent_can_install: false` → log as blocker in `.ratchet/pre-validation.log`
+- If missing and `agent_can_install: false` → log as blocker in `.ratchet/{intent-id}/pre-validation.log`
 
 ### 2. Scaffold project (if needed)
 
@@ -36,7 +36,7 @@ Only scaffold if no existing project structure is detected.
 
 Detect the project's build system from project files (package.json, go.mod, Makefile, Cargo.toml, pyproject.toml, etc.) and run its build command to confirm compilation works.
 
-Record results in `.ratchet/pre-validation.log`.
+Record results in `.ratchet/{intent-id}/pre-validation.log`.
 
 ### 4. Validate test runner
 
@@ -51,7 +51,7 @@ After installing tools and validating infrastructure, discover what verification
 1. Read the spec's constraints and determine what **capabilities** are needed for verification (e.g., "browser rendering", "HTTP requests", "build compilation", "linting")
 2. For each needed capability, check if any installed tool provides it
 3. Test that the tool actually works in this environment (e.g., browser testing tools should work in headless mode if no display is available)
-4. Write results to `.ratchet/pre-validation.log` as a capabilities map
+4. Write results to `.ratchet/{intent-id}/pre-validation.log` as a capabilities map
 
 ```yaml
 capabilities:
@@ -67,7 +67,7 @@ capabilities:
 
 ## Output
 
-Write `.ratchet/pre-validation.log`:
+Write `.ratchet/{intent-id}/pre-validation.log`:
 ```yaml
 timestamp: [datetime]
 tools_installed: [list]

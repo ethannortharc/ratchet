@@ -14,8 +14,8 @@ You generate reports for Ratchet intents.
 
 You receive:
 - Intent ID and workspace path
-- Path to `.ratchet/review_log.yaml` (verification results)
-- Path to `.ratchet/spec.yaml` (for context)
+- Path to `.ratchet/{intent-id}/review_log.yaml` (verification results)
+- Path to `.ratchet/{intent-id}/spec.yaml` (for context)
 - Report mode: `wp` (single WP) or `summary` (full round)
 - For `wp` mode: WP ID, iteration count, final score, status
 - For `summary` mode: round number, trigger (initial / human feedback / spec update)
@@ -24,7 +24,7 @@ You receive:
 
 ### Per-WP Report (mode: wp)
 
-Write to `.ratchet/reports/wp-{id}.md`:
+Write to `.ratchet/{intent-id}/reports/wp-{id}.md`:
 
 ```markdown
 ## WP Report — {wp-id}: {wp-name}
@@ -52,7 +52,7 @@ Wall time: {wp_wall_time} │ Tokens: {wp_total_tokens}
 
 ### Summary Report (mode: summary)
 
-Write to `.ratchet/reports/iter-{NNN}.md`:
+Write to `.ratchet/{intent-id}/reports/iter-{NNN}.md`:
 
 ```markdown
 ## Iteration Report — {intent-id}, Round {N}

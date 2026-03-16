@@ -150,12 +150,12 @@ paused → active                : User runs /ratchet:resume
 any → archived                 : User archives
 ```
 
-## Test Suite Structure (.ratchet/test-suite/)
+## Test Suite Structure (.ratchet/{intent-id}/test-suite/)
 
 Generated automatically after Intent Spec confirmation, before planning.
 
 ```
-.ratchet/test-suite/
+.ratchet/{intent-id}/test-suite/
 ├── manifest.yaml          # Maps constraint IDs to test files
 ├── INV-01.test.ts         # or .py, .go — auto verifier test
 ├── INV-02.test.ts

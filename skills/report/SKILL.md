@@ -15,7 +15,7 @@ description: Generate iteration reports (after each ratchet round) and project r
 
 ### Iteration Report (generated automatically after each round)
 
-Save to `.ratchet/reports/iter-{NNN}.md`:
+Save to `.ratchet/{intent-id}/reports/iter-{NNN}.md`:
 
 ```markdown
 ## Iteration Report — [intent-id], Round [N]
@@ -55,8 +55,8 @@ Trigger: [what started this round — initial / human feedback / spec update]
   ```
 
 #### Human Review Items (pending)
-- QD-02 (visual design): screenshot at .ratchet/artifacts/screenshots/results-page.png
-- INV-07 (usability): test instructions at .ratchet/test-suite/INV-07.checklist.md
+- QD-02 (visual design): screenshot at .ratchet/{intent-id}/artifacts/screenshots/results-page.png
+- INV-07 (usability): test instructions at .ratchet/{intent-id}/test-suite/INV-07.checklist.md
 
 ### Key Decisions by Agent
 - wp-03 iter 2: Switched from LIKE to FTS5, 10x perf improvement
@@ -78,7 +78,7 @@ Trigger: [what started this round — initial / human feedback / spec update]
 
 ### Project Report (generated on completion or `/ratchet:report`)
 
-Save to `.ratchet/reports/final.md`:
+Save to `.ratchet/{intent-id}/reports/final.md`:
 
 ```markdown
 ## Project Report — [intent-id]

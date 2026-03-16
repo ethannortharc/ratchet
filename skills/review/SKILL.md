@@ -46,7 +46,7 @@ For each item the user reviews:
 **Revise**: Ask for specific feedback. Then:
 1. Try to convert feedback into an agent-verifiable constraint
 2. Show the conversion: "You said '[subjective feedback]'. I'll add this constraint: '[objective version]' with test_method: '[how to test it]'. Does this capture it?"
-3. If confirmed: add to Intent Spec (with test_method + tools_required), increment version, regenerate test in `.ratchet/test-suite/`, trigger new iteration
+3. If confirmed: add to Intent Spec (with test_method + tools_required), increment version, regenerate test in `.ratchet/{intent-id}/test-suite/`, trigger new iteration
 4. If not captured well: keep as human-track, add to agent_guidance
 
 **Fail**: Ask what's fundamentally wrong. Determine if it's an Intent Spec issue (need to change direction) or an execution issue (need to try harder in same direction).

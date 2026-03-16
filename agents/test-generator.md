@@ -13,7 +13,7 @@ You generate concrete test files from an Intent Spec's `test_method` fields.
 ## Input
 
 You receive:
-- Path to `.ratchet/spec.yaml` (Intent Spec)
+- Path to `.ratchet/{intent-id}/spec.yaml` (Intent Spec)
 - Workspace absolute path
 - Project type and test runner info
 
@@ -25,7 +25,7 @@ From spec.yaml, collect every invariant and quality_dimension. Each has a `test_
 
 ### 2. Generate test files
 
-Create `.ratchet/test-suite/` with subdirectories:
+Create `.ratchet/{intent-id}/test-suite/` with subdirectories:
 
 **For `verifier: auto` constraints:**
 - Read `test_method` for scenarios, edge cases, expected behaviors
@@ -35,19 +35,19 @@ Create `.ratchet/test-suite/` with subdirectories:
   - Level 1: Static checks
   - Level 2: Unit tests
   - Level 3: Integration tests (if tools available)
-- File: `.ratchet/test-suite/auto/INV-XX.test.{ts,py,go,...}`
+- File: `.ratchet/{intent-id}/test-suite/auto/INV-XX.test.{ts,py,go,...}`
 
 **For `verifier: ai_review` constraints:**
 - Generate structured review prompt with rubric, threshold, evaluation criteria
-- File: `.ratchet/test-suite/ai-review/QD-XX.review.md`
+- File: `.ratchet/{intent-id}/test-suite/ai-review/QD-XX.review.md`
 
 **For `verifier: human` constraints:**
 - Generate review checklist with clear criteria and artifact locations
-- File: `.ratchet/test-suite/human/QD-XX.checklist.md`
+- File: `.ratchet/{intent-id}/test-suite/human/QD-XX.checklist.md`
 
 ### 3. Write manifest
 
-Create `.ratchet/test-suite/manifest.yaml`:
+Create `.ratchet/{intent-id}/test-suite/manifest.yaml`:
 ```yaml
 generated: [datetime]
 spec_version: [int]

@@ -15,9 +15,9 @@ You verify a work package's output against the Intent Spec constraints.
 You receive:
 - Work package ID and its acceptance criteria
 - Path to workspace
-- Path to `.ratchet/spec.yaml`
-- Path to `.ratchet/test-suite/manifest.yaml`
-- Path to `.ratchet/pre-validation.log` (environment capabilities)
+- Path to `.ratchet/{intent-id}/spec.yaml`
+- Path to `.ratchet/{intent-id}/test-suite/manifest.yaml`
+- Path to `.ratchet/{intent-id}/pre-validation.log` (environment capabilities)
 - Current iteration number
 
 ## Verification Levels (Short-Circuit Gated)
@@ -30,7 +30,7 @@ Build, lint, type-check. Catches syntax errors and obvious issues.
 **Gate:** If Level 1 fails → skip Levels 2, 3, and AI Review. Return immediately with `recommendation: discard` and `composite_score: 0.0`. The executor needs to fix compilation before anything else matters.
 
 ### Level 2: Unit Tests
-Run test files from `.ratchet/test-suite/auto/` that match this WP's acceptance criteria.
+Run test files from `.ratchet/{intent-id}/test-suite/auto/` that match this WP's acceptance criteria.
 Capture full stdout/stderr as raw_output.
 
 **Gate:** If Level 2 fails → still run Level 3 if available (integration tests may catch different issues), but skip AI Review. Code that fails unit tests isn't ready for quality evaluation.
@@ -48,7 +48,7 @@ Read `pre-validation.log` to determine available verification capabilities. Use 
 
 ### AI Review (only after all auto levels pass)
 For `verifier: ai_review` constraints:
-- Load review prompt from `.ratchet/test-suite/ai-review/`
+- Load review prompt from `.ratchet/{intent-id}/test-suite/ai-review/`
 - Load the artifact to review
 - Evaluate critically against rubric — do NOT rubber-stamp
 - Output: score, pass/fail, justification, specific issues

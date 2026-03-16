@@ -6,7 +6,7 @@ description: Run three-tier verification with ratchet optimization loop. Execute
 # Verify — Three-Tier Verification + Ratchet Loop
 
 ## Prerequisites
-`.ratchet/spec.yaml` (Intent Spec) must exist. Artifacts to verify must be present.
+`.ratchet/{intent-id}/spec.yaml` (Intent Spec) must exist. Artifacts to verify must be present.
 
 ## Workspace Resolution
 
@@ -45,12 +45,12 @@ raw_output: |
     ...
 ```
 
-Use test files from `.ratchet/test-suite/` when available (check manifest.yaml).
+Use test files from `.ratchet/{intent-id}/test-suite/` when available (check manifest.yaml).
 
 ### Level 3: Integration / Smoke Tests (agent track)
 **Actually run the artifact and verify basic functionality.** This is the level that catches encoding errors, broken buttons, pages not rendering — issues that unit tests miss.
 
-Read `.ratchet/pre-validation.log` to determine what verification capabilities are available (written by env-preparer). Use the discovered capabilities to decide HOW to verify — do not rely on a hardcoded tool table. Common strategies:
+Read `.ratchet/{intent-id}/pre-validation.log` to determine what verification capabilities are available (written by env-preparer). Use the discovered capabilities to decide HOW to verify — do not rely on a hardcoded tool table. Common strategies:
 
 - **Has browser testing capability** → run in headless mode (no display required), verify pages render, interactions work, no console errors
 - **Has HTTP client capability** → start server, hit endpoints, validate responses
@@ -67,7 +67,7 @@ If check fails due to missing capability: record as `skipped`, describe the capa
 
 ### 2. AI Review Verifiers (agent track — only after all auto levels pass)
 For each `verifier: ai_review` constraint:
-- Load the review prompt from `.ratchet/test-suite/QD-XX.review.md` if available
+- Load the review prompt from `.ratchet/{intent-id}/test-suite/QD-XX.review.md` if available
 - Otherwise construct from artifact + rubric + project context
 - Use the constraint's `test_method` to guide evaluation focus
 - Evaluate critically (don't rubber-stamp)
@@ -101,7 +101,7 @@ Do NOT run these inline. Queue them to `~/.config/ratchet/review_queue.yaml`:
   constraint_id: {constraint}
   summary: {one-line description}
   artifact: {path to artifact}
-  checklist: {path to .ratchet/test-suite/XX.checklist.md if exists}
+  checklist: {path to .ratchet/{intent-id}/test-suite/XX.checklist.md if exists}
   priority: high | normal  # high if blocking downstream WPs
   queued_at: {datetime}
 ```
@@ -130,7 +130,7 @@ On completion: the execute skill updates intent status in state.yaml:
 
 ## Recording Results
 
-Append to `.ratchet/review_log.yaml`:
+Append to `.ratchet/{intent-id}/review_log.yaml`:
 ```yaml
 - timestamp: datetime
   intent_id: string
@@ -155,7 +155,7 @@ Append to `.ratchet/review_log.yaml`:
 
 During execution and verification, if you discover issues NOT covered by any Intent Spec constraint:
 
-Append to `.ratchet/suggested_constraints.yaml`:
+Append to `.ratchet/{intent-id}/suggested_constraints.yaml`:
 ```yaml
 - id: sug-{N}
   discovered_during: {wp-id}

@@ -115,4 +115,5 @@ Uses subagents for parallel execution where possible.
 ## State Locations
 
 - Global: `~/.config/ratchet/` (profile, intent registry, review queue)
-- Per-intent: `.ratchet/` in workspace (spec, test suite, plan, logs, reports)
+- Per-intent: `.ratchet/{intent-id}/` in workspace (spec, test suite, plan, logs, reports)
+- Multiple intents can share the same workspace — each gets its own subdirectory (e.g., `.ratchet/prism-enneagram/`, `.ratchet/prism-mbti/`)

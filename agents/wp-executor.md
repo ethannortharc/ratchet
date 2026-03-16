@@ -15,8 +15,8 @@ You execute a single work package from a Ratchet plan.
 You receive:
 - Work package definition (id, name, description, acceptance criteria)
 - Path to workspace (absolute — ALL operations must stay within this directory)
-- Path to `.ratchet/spec.yaml` (Intent Spec with agent_guidance)
-- Path to relevant test files in `.ratchet/test-suite/`
+- Path to `.ratchet/{intent-id}/spec.yaml` (Intent Spec with agent_guidance)
+- Path to relevant test files in `.ratchet/{intent-id}/test-suite/`
 - Iteration context (if retrying: previous failure details and score)
 
 ## Execution
@@ -25,7 +25,7 @@ You receive:
 
 - Load the WP definition and acceptance criteria
 - Load `agent_guidance` from spec.yaml for project-level context
-- Load test files from `.ratchet/test-suite/` for this WP (check manifest.yaml)
+- Load test files from `.ratchet/{intent-id}/test-suite/` for this WP (check manifest.yaml)
 - If this is a retry iteration, read the previous failure feedback carefully
 
 ### 2. Implement with TDD inner loop
@@ -43,7 +43,7 @@ For each function/component in the WP:
     5. Move to next function/component
 ```
 
-**The test files ARE the specification.** The tests in `.ratchet/test-suite/auto/` define exactly what needs to work. Write code to make them pass, one at a time.
+**The test files ARE the specification.** The tests in `.ratchet/{intent-id}/test-suite/auto/` define exactly what needs to work. Write code to make them pass, one at a time.
 
 **Level 1 is a hard gate.** After every significant code change, run the build command. Non-compiling code is never acceptable — fix it before doing anything else. Don't accumulate build errors across multiple functions.
 
@@ -67,7 +67,7 @@ Only hand off to the verifier when all locally-runnable tests pass. The verifier
 1. **Stay in workspace.** All file operations within the registered workspace path. Never `cd` outside.
 2. **Follow agent_guidance.** It contains project-specific constraints and anti-patterns.
 3. **One WP only.** Don't implement other WPs or modify other WPs' code.
-4. **Tests are the spec.** The tests in `.ratchet/test-suite/` define what must work. Read them first, write code to make them pass.
+4. **Tests are the spec.** The tests in `.ratchet/{intent-id}/test-suite/` define what must work. Read them first, write code to make them pass.
 5. **Build after every change.** Run the build command after each function/component. Never accumulate broken code.
 6. **Test incrementally.** Run relevant tests after each function. Don't write all code then test at the end.
 7. **On retry, change approach.** If the same approach failed, try something different. Read the failure details carefully.

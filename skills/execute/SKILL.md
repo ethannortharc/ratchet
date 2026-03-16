@@ -7,10 +7,10 @@ description: Orchestrate the ratchet execution loop. For each work package, spaw
 
 ## Prerequisites
 
-- `.ratchet/spec.yaml` (Intent Spec) must exist
-- `.ratchet/plan.yaml` (work package plan) must exist
-- `.ratchet/test-suite/` (generated test suite) must exist
-- `.ratchet/pre-validation.log` should confirm no blockers
+- `.ratchet/{intent-id}/spec.yaml` (Intent Spec) must exist
+- `.ratchet/{intent-id}/plan.yaml` (work package plan) must exist
+- `.ratchet/{intent-id}/test-suite/` (generated test suite) must exist
+- `.ratchet/{intent-id}/pre-validation.log` should confirm no blockers
 
 ## Workspace Resolution
 
@@ -119,13 +119,13 @@ This tracking is in-memory during execution (not persisted to disk). The execute
 
 Spawn report-writer subagent (haiku) for that WP's results:
 - Input: intent ID, workspace, review_log.yaml, spec.yaml, WP ID
-- Output: `.ratchet/reports/wp-{id}.md`
+- Output: `.ratchet/{intent-id}/reports/wp-{id}.md`
 
 ### After All WPs in a Parallel Group Complete
 
 - Spawn report-writer subagent (haiku) in **summary** mode:
   - Input: intent ID, workspace, review_log.yaml, spec.yaml, round number, trigger
-  - Output: `.ratchet/reports/iter-{NNN}.md` (references per-WP reports)
+  - Output: `.ratchet/{intent-id}/reports/iter-{NNN}.md` (references per-WP reports)
 - Update intent status based on results:
   - All WPs agent_complete, no human items → `agent_complete`
   - Human items queued → `human_review`
@@ -163,7 +163,7 @@ Per WP, aggregate:
 - `wp_iterations`: number of ratchet iterations
 - `wp_models`: models used (for cost analysis)
 
-Append to `.ratchet/review_log.yaml` alongside verification results. Pass to report-writer for per-WP and summary reports.
+Append to `.ratchet/{intent-id}/review_log.yaml` alongside verification results. Pass to report-writer for per-WP and summary reports.
 
 ## Rules
 

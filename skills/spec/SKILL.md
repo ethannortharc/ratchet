@@ -193,16 +193,16 @@ Approve to start autonomous execution, or adjust anything.
 
 **For >20 constraints: generate HTML review page**
 
-Generate `.ratchet/spec-review.html` and open in browser:
+Generate `.ratchet/{intent-id}/spec-review.html` and open in browser:
 ```bash
-open .ratchet/spec-review.html
+open .ratchet/{intent-id}/spec-review.html
 ```
 
 The HTML page shows:
 - Grouped constraints (expandable)
 - Delivery/UI direction with any mockup references
 - Modification text input per section
-- "Approve & Start" button → writes `.ratchet/approved` marker file
+- "Approve & Start" button → writes `.ratchet/{intent-id}/approved` marker file
 - Agent detects the marker and proceeds to Step 4
 
 ### Process Feedback
@@ -234,7 +234,7 @@ Main agent validates the verification pipeline works end-to-end:
 2. Read test-generator manifest — all constraints covered?
 3. Run test pipeline dry-run: `[test-runner] --passWithNoTests` or equivalent
 4. If any infrastructure issues: fix them here, not during execution
-5. Write `.ratchet/pre-validation.log`
+5. Write `.ratchet/{intent-id}/pre-validation.log`
 
 If blockers require human action (tool that can't be auto-installed), pause and notify user.
 

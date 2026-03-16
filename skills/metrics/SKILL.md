@@ -45,4 +45,4 @@ description: Track and display human interaction count, automation time, verific
 ```
 
 ## Recording
-Other skills append to `.ratchet/metrics.yaml` at phase completion. This skill reads and presents, also calculates derived metrics and generates suggestions.
+Other skills append to `.ratchet/{intent-id}/metrics.yaml` at phase completion. This skill reads and presents, also calculates derived metrics and generates suggestions.
