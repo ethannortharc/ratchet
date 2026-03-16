@@ -30,7 +30,7 @@ If an agent can verify its own work, it can iterate without human help. If it ca
 
 **Verification-first specification.** Before building anything, define what "correct" means and confirm you can actually check it. This is TDD applied at the project level, not just the code level.
 
-**Agent requests its own tools.** Instead of passively accepting whatever environment it's given, the agent analyzes what it needs for verification and actively requests tools — "install Playwright and I can auto-verify 6 more constraints." This is still an early idea and we're learning where it helps and where it's overhead.
+**Agent requests its own tools.** Instead of passively accepting whatever environment it's given, the agent analyzes what it needs for verification and actively requests tools — "install Docker and I can auto-verify 6 more constraints." This is still an early idea and we're learning where it helps and where it's overhead.
 
 **Dual-track verification.** Separate what machines can check (tests, lints, AI review against rubrics) from what only humans can judge (taste, direction, "does this feel right"). Let the machine track run continuously; queue the human track for async review. This way agent work is never blocked waiting for a human who's asleep or busy.
 
@@ -116,25 +116,7 @@ The structured output of the spec phase. Not a requirements document — it capt
 - **Delivery direction** — UI/UX mood, interaction patterns, visual references
 - **Verification plan** — every constraint has a test method, required tools, and a ratchet metric
 
-Each constraint is assigned a **track** (agent or human) and a **verifier** (auto, ai_review, or human). Here's what a constraint looks like:
-
-```yaml
-invariants:
-  - id: INV-03
-    claim: "Scoring logic produces correct personality type"
-    track: agent
-    verifier: auto
-    test_method: |
-      Unit: all 9 type scores, tie-breaking, boundary values
-      Integration: complete quiz → verify correct type displayed
-    tools_required:
-      - id: vitest
-        install: "npm install -D vitest"
-        agent_can_install: true
-    ratchet_metric: "passed_tests / total_tests"
-```
-
-The `test_method` drives automatic test generation. The `tools_required` drives environment preparation. The `ratchet_metric` drives the keep/discard decision.
+Each constraint is assigned a **track** (agent or human) and a **verifier** (auto, ai_review, or human).
 
 ### Feedback Conversion
 
@@ -153,8 +135,6 @@ During execution, the agent may discover issues not covered by the spec ("SQLite
 
 Ratchet uses Claude Code's subagent system for parallel execution — environment preparation, test generation, work package execution, and verification each run as focused subagents, while the main agent orchestrates.
 
-See [DESIGN.md](DESIGN.md) for the complete architecture, schemas, and design decisions.
-
 ## Install
 
 ```bash
@@ -171,6 +151,9 @@ Recommended: also install [Superpower](https://github.com/obra/superpowers) for 
 ## Usage
 
 ```bash
+# One-time: set preferences
+/ratchet:profile
+
 # Start a project
 /ratchet:spec "your intent description"
 # → Discuss, confirm, agent takes over

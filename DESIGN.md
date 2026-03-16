@@ -20,7 +20,7 @@ The name comes from the core mechanism: like a ratchet wrench, progress only mov
 
 3. **Maximum coverage.** Agent aggressively maximizes auto-verification by requesting tools, running multi-level tests (static → unit → integration), and never leaving basic functionality to human review.
 
-4. **EVA (Early Verification Architecture).** Validate all verification infrastructure before execution. Install tools, scaffold project, dry-run test pipeline. Catch problems when they're cheap to fix.
+4. **EVA (Environment-Verification Architecture).** An agent's autonomy is bounded by its verification capability. Validate all verification infrastructure before execution. Install tools, scaffold project, dry-run test pipeline. Catch problems when they're cheap to fix.
 
 5. **Ratchet loop.** Budget-limited, git-backed. Every iteration: execute → verify → improved? keep : discard → repeat.
 
@@ -244,8 +244,8 @@ For products with user interfaces, the interaction model IS the product. A singl
 ### Why subagents?
 Context isolation: each subagent gets a clean context focused on one task. Cost optimization: wp-executor and verifier on Sonnet (focused tasks), report-writer on Haiku (summarization). Parallelism: independent WPs run simultaneously.
 
-### Why EVA (early verification)?
-Discovering that vitest isn't configured on iteration 3 wastes 2 iterations. Validating the pipeline before execution catches these issues when they're trivial to fix.
+### Why EVA (Environment-Verification Architecture)?
+An agent's autonomy is bounded by its verification capability. If it can verify its own work, it can iterate without human help. Practically: discovering that vitest isn't configured on iteration 3 wastes 2 iterations. Validating the pipeline before execution catches these issues when they're trivial to fix.
 
 ### Why maximum coverage over convenient human review?
 Every constraint on human-track is a delay. Agent should exhaust all options (install tools, write integration tests, use Playwright) before falling back to human review. Basic functionality bugs reaching human review is a system failure.
