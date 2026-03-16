@@ -8,6 +8,22 @@ The name comes from the core mechanism: like a ratchet wrench, progress only mov
 
 > **Status**: Experimental. Being tested on several real projects. Feedback and contributions welcome.
 
+## Install
+
+### Claude Code
+
+```
+/install-plugin https://github.com/ethannortharc/ratchet
+```
+
+### Gemini CLI
+
+```
+gemini extensions install https://github.com/ethannortharc/ratchet
+```
+
+Recommended: also install [Superpower](https://github.com/obra/superpowers) for enhanced TDD and code review within each ratchet iteration.
+
 ---
 
 ## Why This Exists
@@ -202,19 +218,6 @@ Ratchet relies on several Claude Code capabilities:
 | **Skill system** | Internal workflow chaining (spec → execute → verify) |
 
 See [DESIGN.md](DESIGN.md) for the complete architecture, schemas, and design decisions.
-
-## Install
-
-```bash
-# From GitHub
-claude mcp add-plugin ratchet -- https://github.com/ethannortharc/ratchet
-
-# Or clone and use locally
-git clone https://github.com/ethannortharc/ratchet.git
-claude --plugin-dir /path/to/ratchet
-```
-
-Recommended: also install [Superpower](https://github.com/obra/superpowers) for enhanced TDD and code review within each ratchet iteration.
 
 ## Usage
 
