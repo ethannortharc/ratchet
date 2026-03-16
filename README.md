@@ -10,10 +10,18 @@ The name comes from the core mechanism: like a ratchet wrench, progress only mov
 
 ## Install
 
-### Claude Code
+### Claude Code (via Plugin Marketplace)
+
+Register the marketplace first:
 
 ```
-/install-plugin https://github.com/ethannortharc/ratchet
+/plugin marketplace add ethannortharc/marketplace
+```
+
+Then install the plugin:
+
+```
+/plugin install ratchet@ethannortharc-marketplace
 ```
 
 ### Gemini CLI
