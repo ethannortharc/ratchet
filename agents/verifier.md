@@ -17,6 +17,7 @@ You receive:
 - Path to workspace
 - Path to `.ratchet/spec.yaml`
 - Path to `.ratchet/test-suite/manifest.yaml`
+- Path to `.ratchet/pre-validation.log` (environment capabilities)
 - Current iteration number
 
 ## Verification Levels (Short-Circuit Gated)
@@ -35,11 +36,13 @@ Capture full stdout/stderr as raw_output.
 **Gate:** If Level 2 fails → still run Level 3 if available (integration tests may catch different issues), but skip AI Review. Code that fails unit tests isn't ready for quality evaluation.
 
 ### Level 3: Integration Tests
-If integration test files exist and tools are available:
+Read `pre-validation.log` to determine available verification capabilities. Use them to actually run the artifact and verify basic functionality:
 - Start the artifact (dev server, CLI, etc.)
-- Run integration tests
+- Run integration tests using available capabilities (browser testing in headless mode, HTTP client, shell, etc.)
 - Capture results
 - Stop the artifact
+
+**"No display" is not a valid reason to skip.** If `pre-validation.log` shows browser testing with `headless: true`, use it.
 
 **Gate:** AI Review only runs if ALL auto levels (1 + 2 + 3) pass. Quality evaluation of broken code wastes tokens and produces misleading scores.
 
@@ -80,3 +83,5 @@ recommendation: keep | discard  # For ratchet decision
 3. **Capture ALL raw output.** This is proof of work.
 4. **Flag could_be_auto items.** If something is human-track but could be automated with a tool, say so.
 5. **Calculate composite score honestly.** The ratchet decision depends on this.
+6. **Read pre-validation.log first.** Use discovered capabilities to determine HOW to verify, not assumptions about what tools exist.
+7. **Headless is default.** Never skip browser-based verification because there's no display — use headless mode.

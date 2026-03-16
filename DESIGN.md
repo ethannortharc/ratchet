@@ -138,7 +138,7 @@ Level 2 — Unit: isolated function tests
 Level 3 — Integration: actually run the artifact and verify behavior
 ```
 
-Level 3 catches encoding errors, broken buttons, navigation failures — issues unit tests miss. Agent aggressively requests tools (Playwright, etc.) to enable Level 3.
+Level 3 catches encoding errors, broken buttons, navigation failures — issues unit tests miss. Agent discovers available verification capabilities and aggressively recommends tools to enable Level 3 (browser testing in headless mode, HTTP clients, etc.).
 
 ### Feedback Paths
 
@@ -247,10 +247,10 @@ For products with user interfaces, the interaction model IS the product. A singl
 Context isolation: each subagent gets a clean context focused on one task. Cost optimization: wp-executor and verifier on Sonnet (focused tasks), report-writer on Haiku (summarization). Parallelism: independent WPs run simultaneously.
 
 ### Why EVA (Environment-Verification Architecture)?
-An agent's autonomy is bounded by its verification capability. If it can verify its own work, it can iterate without human help. Practically: discovering that vitest isn't configured on iteration 3 wastes 2 iterations. Validating the pipeline before execution catches these issues when they're trivial to fix.
+An agent's autonomy is bounded by its verification capability. If it can verify its own work, it can iterate without human help. Practically: discovering that the test runner isn't configured on iteration 3 wastes 2 iterations. Validating the pipeline before execution catches these issues when they're trivial to fix.
 
 ### Why maximum coverage over convenient human review?
-Every constraint on human-track is a delay. Agent should exhaust all options (install tools, write integration tests, use Playwright) before falling back to human review. Basic functionality bugs reaching human review is a system failure.
+Every constraint on human-track is a delay. Agent should exhaust all options (install tools, write integration tests, discover browser testing capabilities) before falling back to human review. Basic functionality bugs reaching human review is a system failure.
 
 ### Why direct feedback?
 Requiring `/ratchet:review` for every piece of feedback adds ceremony without value. When the user is actively in conversation and sees an issue, they should just say it. The feedback conversion engine is the same either way.

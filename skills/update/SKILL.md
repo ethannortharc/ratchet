@@ -47,9 +47,9 @@ User: "search feels slow"
   test_method: |
     Benchmark test: index 1000 notes, measure search latency
     across 10 representative queries. P95 must be < 200ms.
-  tools_required:
-    - id: vitest
-      install: "npm install -D vitest"
+  tools_required:                        # use the project's actual test runner
+    - id: [project-test-runner]
+      install: "[install command]"
       agent_can_install: true
 
 This was originally a human observation but is now machine-verifiable.

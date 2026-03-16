@@ -69,15 +69,24 @@ Register in `~/.config/ratchet/state.yaml` with absolute path. Status: `draft`.
 ## Step 2: Generate Intent Spec
 
 ### 2.1 Environment Discovery
-Detect available runtimes, tools, and capabilities.
+Actively probe the environment — don't just read project files:
+
+1. **Detect project type** from project files (package.json, go.mod, Cargo.toml, pyproject.toml, Makefile, etc.)
+2. **Detect installed runtimes and tools** by running version/presence checks
+3. **Reason about verification needs** from the project type — what capabilities are needed to verify this project's constraints?
+4. **Search for tools** that provide those capabilities — check what's already installed, what can be installed
+5. **Detect environment constraints** — headless-only (no display), CI environment, available resources
+
+This information feeds into constraint generation (what can be auto-verified) and env-preparer (what needs to be installed).
 
 ### 2.2 Environment Negotiation (Maximum Coverage)
-Identify what "running the artifact" looks like for this project. Aggressively recommend tools that unlock auto-verification:
+Identify what "running the artifact" looks like for this project. Determine what verification capabilities would unlock auto-coverage, and recommend tools that provide them:
 ```
 Current auto coverage: 65%
-With Playwright: 90% (+25% — catches broken buttons, rendering errors, navigation)
-  Install: npx playwright install
+With [browser testing tool]: 90% (+25% — catches broken buttons, rendering errors, navigation)
+  Install: [install command]
   I can install this: yes
+  Headless mode: supported (no display needed)
 
 Without it, these become HUMAN review items:
   - Page loads correctly
@@ -85,7 +94,7 @@ Without it, these become HUMAN review items:
   - Navigation works
 ```
 
-**Basic functionality MUST be auto-verifiable.** If tools are missing, make this explicit.
+**Basic functionality MUST be auto-verifiable.** If capabilities are missing, make this explicit and recommend tools that provide them. Don't hardcode specific tool names — discover what's available or recommend based on the project ecosystem.
 
 ### 2.3 Generate Constraints
 For every constraint:
@@ -151,14 +160,14 @@ This interaction model right? Any screens missing?
 
 **Group B: Core Functionality (N invariants)**
 ```
-🔒 Core (auto-verified):
-  INV-01  Page loads without errors          vitest + playwright
-  INV-02  All 45 questions display            vitest
-  INV-03  Scoring logic correct               vitest (unit + edge cases)
-  INV-04  Results page renders all 9 types    vitest + playwright
-  INV-05  Retest button works                 playwright
-  INV-06  Share button works                  playwright
-  INV-07  Responsive on mobile               playwright
+🔒 Core (auto-verified):                        # tools are illustrative — use discovered capabilities
+  INV-01  Page loads without errors          unit + browser testing
+  INV-02  All 45 questions display            unit tests
+  INV-03  Scoring logic correct               unit tests (+ edge cases)
+  INV-04  Results page renders all 9 types    unit + browser testing
+  INV-05  Retest button works                 browser testing
+  INV-06  Share button works                  browser testing
+  INV-07  Responsive on mobile               browser testing (viewport)
 
 All auto-verified with multi-level tests. Missing anything?
 ```
@@ -168,7 +177,7 @@ All auto-verified with multi-level tests. Missing anything?
 📊 Quality:
   QD-01  Type descriptions accurate    ai_review  4/5
   QD-02  Visual design matches mood    human      3/5
-  QD-03  Accessibility basics          auto (lighthouse)
+  QD-03  Accessibility basics          auto (accessibility testing)
 
 Thresholds OK?
 ```

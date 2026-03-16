@@ -31,6 +31,13 @@ Write to `.ratchet/reports/wp-{id}.md`:
 Intent: {intent-id} │ Workspace: {path}
 Iterations: {count} │ Final score: {score} │ Status: {status}
 
+### Resource Usage
+Wall time: {wp_wall_time} │ Tokens: {wp_total_tokens}
+| Phase | Time | Tokens |
+|-------|------|--------|
+| Executor (total) | {time} | {tokens} |
+| Verifier (total) | {time} | {tokens} |
+
 ### Verification Results
 | Constraint | Level | Result | Score |
 |-----------|-------|--------|-------|
@@ -54,6 +61,12 @@ Time: {duration} │ Human interactions: {N}
 Intent Spec version: v{N}
 Trigger: {trigger}
 
+### Resource Usage
+| WP | Wall Time | Tokens | Iterations |
+|----|-----------|--------|------------|
+[rows per WP from review_log.yaml resource data]
+| **Total** | {sum} | {sum} | {sum} |
+
 ### Progress
 | WP | Iterations | Score | Status | Report |
 |----|-----------|-------|--------|--------|
@@ -67,7 +80,7 @@ Trigger: {trigger}
 
 ### Summary
 Agent track: {N}/{total} passed │ Best composite: {score}
-Human track: {N} items queued
+Human track: {N} items queued │ Total tokens: {sum}
 ```
 
 ## Rules

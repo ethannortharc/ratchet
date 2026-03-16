@@ -50,29 +50,20 @@ Use test files from `.ratchet/test-suite/` when available (check manifest.yaml).
 ### Level 3: Integration / Smoke Tests (agent track)
 **Actually run the artifact and verify basic functionality.** This is the level that catches encoding errors, broken buttons, pages not rendering — issues that unit tests miss.
 
-The approach depends on what the project produces:
+Read `.ratchet/pre-validation.log` to determine what verification capabilities are available (written by env-preparer). Use the discovered capabilities to decide HOW to verify — do not rely on a hardcoded tool table. Common strategies:
 
-| Artifact | How to verify | Tool |
-|----------|--------------|------|
-| Web app | Start dev server + Playwright tests | Playwright |
-| CLI | Run with known inputs, check output | shell |
-| API | Start server + curl endpoints | curl |
-| Library | Run example/integration code | runtime |
-| Document | Validate structure, completeness | shell + LLM |
+- **Has browser testing capability** → run in headless mode (no display required), verify pages render, interactions work, no console errors
+- **Has HTTP client capability** → start server, hit endpoints, validate responses
+- **Has container capability** → run full environment tests in container
+- **No specialized tools** → run the artifact directly via shell, check output and exit codes
 
-**If Level 3 tools are missing:** Record as `skipped` with `missing_capability` set. Suggest installation. Do NOT silently downgrade to human review — explicitly flag that basic functionality verification was skipped.
+**"No display available" is NEVER a reason to skip Level 3.** Browser testing tools support headless mode by default. Check `pre-validation.log` for `headless: true` — if available, use it.
 
-```yaml
-# Example Level 3 for web project:
-# 1. Start dev server in background
-# 2. Wait for server ready
-# 3. Run Playwright tests: page loads, navigation works, buttons clickable, no console errors
-# 4. Kill dev server
-```
+**If a needed capability is missing:** Record as `skipped` with `missing_capability` set. Suggest what capability is needed (not a specific tool). Do NOT silently downgrade to human review.
 
 **Key rule: Basic functionality issues must be caught at Level 3, not by human review.** If an encoding error, broken button, or navigation failure reaches the human, the verification system has failed.
 
-If check fails due to missing tool: record as `skipped`, suggest installation.
+If check fails due to missing capability: record as `skipped`, describe the capability needed.
 
 ### 2. AI Review Verifiers (agent track — only after all auto levels pass)
 For each `verifier: ai_review` constraint:

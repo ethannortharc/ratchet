@@ -32,6 +32,8 @@ For each parallel group of WPs (respecting dependency order from plan.yaml):
 best_score = 0.0
 score_history = []
 failure_history = {}  # constraint_id → [error signatures]
+wp_start_time = now()
+wp_total_tokens = 0
 
 for iteration in range(1, budget + 1):
 
@@ -48,9 +50,11 @@ for iteration in range(1, budget + 1):
        → Output: verification results with composite score + recommendation
        Note: Verifier short-circuits — Level 1 fail returns immediately with score 0.0
 
-    3. Track history:
+    3. Track history + resources:
        → score_history.append(composite_score)
        → update failure_history with per-constraint error signatures
+       → wp_total_tokens += executor_tokens + verifier_tokens
+       → record iteration wall time and token usage in review_log.yaml
 
     4. Ratchet decision (based on verifier output):
        - all_agent_pass → git commit "wp-{id}: all agent constraints passed"
@@ -138,6 +142,23 @@ Spawn report-writer subagent (haiku) for that WP's results:
 - Improved → copy staging to current, old current to history
 - Not improved → clear staging
 
+## Resource Tracking
+
+Track wall time and token consumption for every subagent call. This data feeds into reports and cross-project metrics.
+
+Per iteration, record:
+- `executor_time`: wall time for wp-executor subagent
+- `executor_tokens`: token count from wp-executor subagent return metadata
+- `verifier_time`: wall time for verifier subagent
+- `verifier_tokens`: token count from verifier subagent return metadata
+
+Per WP, aggregate:
+- `wp_wall_time`: total elapsed time (start to completion)
+- `wp_total_tokens`: sum of all executor + verifier tokens across iterations
+- `wp_iterations`: number of ratchet iterations
+
+Append to `.ratchet/review_log.yaml` alongside verification results. Pass to report-writer for per-WP and summary reports.
+
 ## Rules
 
 1. **Respect dependency order.** Only start a WP when its `depends_on` WPs are complete.
@@ -145,3 +166,4 @@ Spawn report-writer subagent (haiku) for that WP's results:
 3. **One verifier per executor.** Always verify before making ratchet decisions.
 4. **Report per WP.** Spawn report-writer after each WP, not just at the end.
 5. **Stay in workspace.** All operations within the registered workspace path.
+6. **Track resources.** Record wall time and token usage for every subagent call.

@@ -17,48 +17,37 @@ A constraint should only be `human` if:
 
 Auto verifiers MUST be executable commands that return exit code 0 (pass) or non-zero (fail).
 
-### Patterns by capability:
+### Verification Capabilities
 
-**Go projects (requires: go)**
-```bash
-go build ./...                          # Compiles
-go test ./...                           # Tests pass
-go test -cover ./... | grep -v 'ok'     # Coverage check
-go vet ./...                            # Static analysis
-```
+Do not hardcode specific tools. Instead, identify what **capability** is needed and use whatever tool the environment provides (as recorded in `.ratchet/pre-validation.log`).
 
-**Node projects (requires: node)**
-```bash
-npm test                    # Tests pass
-npm run build               # Build succeeds
-npm run lint                # Linter passes
-```
+| Capability | What it verifies | How to find |
+|-----------|-----------------|-------------|
+| Build/compile | Code compiles without errors | Detect from project files (package.json scripts, Makefile, go.mod, Cargo.toml, etc.) |
+| Test runner | Tests pass | Detect from project config or test directory conventions |
+| Linter | Code style, static analysis | Detect from project config (.eslintrc, .golangci.yml, setup.cfg, etc.) |
+| Type checker | Type safety | Detect from project config (tsconfig.json, mypy.ini, etc.) |
+| Browser testing | UI renders, interactions work | Check pre-validation.log capabilities; always use headless mode |
+| HTTP client | API endpoints respond correctly | Any available HTTP tool (curl, httpie, language-native) |
+| Container runtime | Cross-platform, isolated tests | Check if container runtime is available |
 
-**Python projects (requires: python3)**
-```bash
-python -m pytest            # Tests pass
-python -m mypy .            # Type check
-python -m flake8 .          # Lint
-```
+### Common Patterns (Examples, Not Exhaustive)
 
-**Docker (requires: docker)**
-```bash
-docker build -t test .              # Image builds
-docker run --rm test npm test       # Tests in container
-```
+These are examples of how auto verifiers work in practice. The agent should discover the right commands for the specific project, not copy these verbatim:
 
-**Text/content checks (no special requirements)**
 ```bash
-wc -w < file.md                        # Word count
-grep -c 'pattern' file                  # Pattern presence
-yamllint file.yaml                      # YAML valid
-python3 -c "import json; json.load(open('f.json'))"  # JSON valid
-```
+# Build verification — use the project's own build command
+[package-manager] run build    # or make, cargo build, go build, etc.
 
-**Git checks (requires: git)**
-```bash
-git diff --name-only HEAD~1     # What changed
-git log --oneline -5            # Recent history
+# Test verification — use the project's own test command
+[package-manager] test         # or the test runner directly
+
+# Lint verification — use whatever linter the project configures
+[package-manager] run lint     # or the linter directly
+
+# Content checks — generally shell-native
+wc -w < file.md               # Word count
+yamllint file.yaml             # YAML valid
 ```
 
 ## Implementing ai_review Verifiers
@@ -114,9 +103,9 @@ For human verification, present:
 | Tone consistency | ai_review (with anchor) | human (without anchor) |
 | Character consistency | ai_review | — |
 | "Feels compelling" | human | — |
-| Performance (latency) | auto (with runtime env) | human (without) |
-| Security | auto (with scanner) + ai_review | human (without scanner) |
-| Accessibility | auto (with axe/lighthouse) | ai_review (without) |
+| Performance (latency) | auto (with benchmarking capability) | human (without) |
+| Security | auto (with scanning capability) + ai_review | human (without scanner) |
+| Accessibility | auto (with accessibility testing capability) | ai_review (without) |
 
 ## Ratchet Budget by Domain
 
@@ -132,13 +121,13 @@ If spec has >50% human-track constraints → use low budget (ratchet helps less)
 
 ## Environment Capability → Verifier Upgrades
 
-When a new capability becomes available, these constraints can be upgraded:
+When a new capability becomes available, constraints can be upgraded. The agent should identify these upgrade opportunities during environment negotiation and `/ratchet:review`:
 
 | New Capability | Constraints Upgraded | From → To |
 |---------------|---------------------|-----------|
-| Docker | Cross-platform build, integration tests | human → auto |
-| golangci-lint | Code quality, style | ai_review → auto |
-| Playwright | UI testing, responsive check | human → auto |
-| pytest | Python test execution | human → auto |
-| Superpower plugin | TDD enforcement, code review | human → auto/ai_review |
-| Lighthouse | Performance, accessibility | human → auto |
+| Container runtime | Cross-platform build, integration tests | human → auto |
+| Linting tool | Code quality, style | ai_review → auto |
+| Browser testing (headless) | UI testing, responsive check, interaction testing | human → auto |
+| Test framework | Language-specific test execution | human → auto |
+| Performance testing | Latency, throughput, bundle size | human → auto |
+| Accessibility testing | WCAG compliance, contrast, navigation | human → auto |
