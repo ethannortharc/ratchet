@@ -10,6 +10,7 @@ description: Start a new intent. Guides the user through intent convergence, gen
 ```
 Step 1: Intent Convergence
   → 2-3 high-level "what" decisions
+  → Domain research (if domain-specific project)
 Step 2: Generate Intent Spec
   → Full spec with delivery/UI direction, constraints, agent_guidance
 Step 3: Thorough Review (as long as needed)
@@ -63,6 +64,18 @@ Intent ID? [auto-generated from name, user can override]
 Workspace? [current dir / create new / custom path]
 ```
 Register in `~/.config/ratchet/state.yaml` with absolute path. Status: `draft`.
+
+### 1.5 Domain Research (if needed)
+
+For domain-specific projects (personality tests, financial tools, medical apps, educational platforms, etc.), research the domain BEFORE generating the spec:
+
+1. Identify what domain knowledge is needed to write good constraints (e.g., "How do professional Enneagram tests work? What scoring methods exist? What makes a good personality test question?")
+2. Spawn research subagent(s) to gather this knowledge — look for established methodologies, scoring algorithms, best practices, common pitfalls
+3. Use findings to inform constraint generation in Step 2
+
+**Skip this step** only if the domain is generic (e.g., CRUD app, landing page, CLI tool) or the agent already has sufficient domain knowledge to write accurate, specific constraints.
+
+**Why this matters:** Domain errors in the spec cascade into wrong constraints, wrong tests, and wrong implementations. No amount of ratchet iterations can fix a spec that fundamentally misunderstands the domain. 5 minutes of research here saves hours of rework.
 
 ---
 

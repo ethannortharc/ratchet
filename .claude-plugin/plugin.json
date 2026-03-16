@@ -1,6 +1,6 @@
 {
   "name": "ratchet",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "description": "Intent-driven autonomous execution. Two human touchpoints: spec (direction) and review (evaluation). Agent handles everything else — subagent architecture, multi-level verification, ratchet optimization.",
   "author": {
     "name": "Ethan"
