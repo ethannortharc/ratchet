@@ -12,9 +12,12 @@ Step 1: Intent Convergence
   → 2-3 high-level "what" decisions
   → Domain research (if domain-specific project)
 Step 2: Generate Intent Spec
-  → Full spec with delivery/UI direction, constraints, agent_guidance
-Step 3: Thorough Review (as long as needed)
-  → Grouped section-by-section confirmation, no time limit
+  → Environment negotiation (WAIT for user confirmation on tools)
+  → Constraints, delivery/UI direction, agent_guidance
+  → Interface mockup (iterate until user approves)
+Step 3: Thorough Review (HTML review page)
+  → Browser-based review with all sections + mockup preview
+  → No time limit, iterate until user clicks "Approve & Start"
 Step 4-7: Autonomous (human walks away)
   → Test suite → EVA validation → Plan → Execute with ratchet
 ```
@@ -31,7 +34,7 @@ Check `~/.config/ratchet/profile.yaml`. If not exists, ask 3 quick preference qu
 ### 1.2 Analyze Intent
 From the user's description, identify:
 - Project type: `software` | `creative_writing` | `research` | `design` | `general`
-- Delivery format: `web_app` | `cli` | `desktop_app` | `document` | `api` | `library`
+- Delivery format: `web_app` | `cli` | `tui` | `desktop_app` | `mobile_app` | `api` | `library` | `document` | `chatbot`
 - 2-3 decisions that would fundamentally change the spec
 
 ### 1.3 Present Choices
@@ -93,21 +96,44 @@ Actively probe the environment — don't just read project files:
 This information feeds into constraint generation (what can be auto-verified) and env-preparer (what needs to be installed).
 
 ### 2.2 Environment Negotiation (Maximum Coverage)
-Identify what "running the artifact" looks like for this project. Determine what verification capabilities would unlock auto-coverage, and recommend tools that provide them:
-```
-Current auto coverage: 65%
-With [browser testing tool]: 90% (+25% — catches broken buttons, rendering errors, navigation)
-  Install: [install command]
-  I can install this: yes
-  Headless mode: supported (no display needed)
 
-Without it, these become HUMAN review items:
-  - Page loads correctly
-  - Buttons functional
-  - Navigation works
+**This step MUST present recommendations and WAIT for user confirmation before proceeding.**
+
+Identify what "running the artifact" looks like for this project. Determine what verification capabilities would unlock auto-coverage, and present a clear before/after comparison:
+
+```
+🔧 Environment Negotiation
+
+Current auto coverage: 65% (7/11 constraints auto-verifiable)
+
+Recommended tools to increase coverage:
+
+  1. [browser testing capability] → +25% coverage (3 more constraints become auto)
+     Install: [install command]
+     I can install this myself: ✅ yes
+     Headless mode: supported
+
+     Without it, these stay as HUMAN review:
+       - Page loads correctly
+       - Buttons functional
+       - Navigation works
+
+  2. [accessibility testing capability] → +5% coverage (1 more constraint)
+     Install: [install command]
+     I can install this myself: ✅ yes
+
+After installing all: 95% auto coverage (only visual design stays human)
+
+Install recommended tools? [yes / pick specific ones / skip]
 ```
 
-**Basic functionality MUST be auto-verifiable.** If capabilities are missing, make this explicit and recommend tools that provide them. Don't hardcode specific tool names — discover what's available or recommend based on the project ecosystem.
+**Rules:**
+- **MUST wait for user response** before continuing to Step 2.3
+- For `agent_can_install: true` tools, offer to install immediately upon user approval
+- For `agent_can_install: false` tools, ask user to install and wait for confirmation
+- Show exactly which constraints move from human → agent track with each tool
+- **Basic functionality MUST be auto-verifiable.** If capabilities are missing, make this explicit
+- Don't hardcode specific tool names — discover what's available or recommend based on the project ecosystem
 
 ### 2.3 Generate Constraints
 For every constraint:
@@ -119,7 +145,7 @@ For every constraint:
 
 ```yaml
 delivery:
-  format: web_app
+  format: web_app  # web_app | cli | tui | desktop_app | mobile_app | api | library | document | chatbot
   ui_direction:
     style: "Minimal, calming, mobile-first"
     key_screens:
@@ -137,91 +163,101 @@ delivery:
     anti_patterns: ["No gamification", "No countdown timers", "No social pressure"]
 ```
 
-For CLI: `cli_direction` with interaction style and output format.
-For non-UI: skip this section.
+For CLI/TUI/API/library/document/chatbot: generate equivalent direction for that format.
+For non-UI projects: skip this section.
 
-### 2.5 Generate agent_guidance
-Natural language prompt for agent context, constraints, and stuck-recovery.
+### 2.5 Generate Interface Mockup (conditional)
 
-### 2.6 Configure Ratchet + Write spec.yaml
+**For projects with user-facing interface**, generate a preview so the user can see and negotiate the look before execution begins. Choose preview method based on `delivery.format`:
+
+| Format | Preview Method | Output |
+|--------|---------------|--------|
+| `web_app` / `desktop_app` / `mobile_app` | HTML mockup → open in browser | `.ratchet/{intent-id}/mockup.html` |
+| `tui` | Render directly in terminal with ANSI colors/box drawing | Terminal output |
+| `cli` | Show example commands + outputs in terminal | Terminal output |
+| `api` | Generate OpenAPI spec → swagger-ui HTML → open in browser | `.ratchet/{intent-id}/mockup-api.html` |
+| `library` | Show type definitions + function signatures + usage examples | Terminal output |
+| `document` | Show structure outline + sample content | Terminal output |
+| `chatbot` | Show example conversation flows | Terminal output |
+
+**For browser-based previews (HTML mockups):**
+- Generate a self-contained HTML file with inline CSS showing key screens
+- Include actual colors, typography, layout, spacing — not wireframes
+- For mobile apps, use mobile viewport meta tag
+- Open with `open .ratchet/{intent-id}/mockup.html`
+
+**Iterate until user approves:**
+1. Show the preview
+2. User gives feedback ("too dark", "buttons too small", "want left sidebar not top nav")
+3. Agent updates the mockup
+4. Repeat until user says it looks right
+5. Approved mockup becomes the visual reference for wp-executor
+
+**Skip this step** for non-UI projects (pure libraries, data processing, etc.).
+
+### 2.6 Generate agent_guidance
+Natural language prompt for agent context, constraints, and stuck-recovery. If a mockup was approved, reference it as the visual spec for the executor.
+
+### 2.7 Configure Ratchet + Write spec.yaml
 
 ---
 
-## Step 3: Thorough Review
+## Step 3: Thorough Review (HTML Review Page)
 
-**No time limit.** This is the highest-ROI human investment. Some sections pass in seconds, others need detailed discussion. Both are fine.
+**No time limit.** This is the highest-ROI human investment.
 
-### Grouped Confirmation
+**Always generate an HTML review page** — regardless of constraint count. A browser-based review is always easier to navigate than terminal conversation.
 
-**For ≤20 constraints: conversational**
+### Generate `.ratchet/{intent-id}/spec-review.html`
 
-Present section-by-section, wait for confirmation on each:
-
-**Group A: Overview + Delivery**
-```
-📋 Prism — Online Personality Tests (v1)
-What: Static web app for Enneagram personality test, Chinese, 45 questions
-
-🖥️ Delivery:
-  web_app │ SPA │ mobile-first
-  Journey: home → quiz (45q) → results
-  Screens: home (3 elements), quiz (4 elements), results (5 elements)
-  Mood: minimal, calming, professional
-
-This interaction model right? Any screens missing?
-```
-
-**Group B: Core Functionality (N invariants)**
-```
-🔒 Core (auto-verified):                        # tools are illustrative — use discovered capabilities
-  INV-01  Page loads without errors          unit + browser testing
-  INV-02  All 45 questions display            unit tests
-  INV-03  Scoring logic correct               unit tests (+ edge cases)
-  INV-04  Results page renders all 9 types    unit + browser testing
-  INV-05  Retest button works                 browser testing
-  INV-06  Share button works                  browser testing
-  INV-07  Responsive on mobile               browser testing (viewport)
-
-All auto-verified with multi-level tests. Missing anything?
-```
-
-**Group C: Quality (N quality_dimensions)**
-```
-📊 Quality:
-  QD-01  Type descriptions accurate    ai_review  4/5
-  QD-02  Visual design matches mood    human      3/5
-  QD-03  Accessibility basics          auto (accessibility testing)
-
-Thresholds OK?
-```
-
-**Group D: Coverage + Guidance**
-```
-🎯 Coverage: auto 80% │ ai_review 10% │ human 10%
-🔄 Ratchet: 8 iterations per WP
-⚠️ Assumed: [low-confidence items]
-
-Approve to start autonomous execution, or adjust anything.
-```
-
-**For >20 constraints: generate HTML review page**
-
-Generate `.ratchet/{intent-id}/spec-review.html` and open in browser:
+Generate a self-contained HTML page and open it:
 ```bash
 open .ratchet/{intent-id}/spec-review.html
 ```
 
-The HTML page shows:
-- Grouped constraints (expandable)
-- Delivery/UI direction with any mockup references
-- Modification text input per section
+The HTML page includes:
+
+**Section A: Project Overview + Delivery Direction**
+- Project name, type, description
+- Delivery format, user journey, key screens
+- If a mockup was generated (Step 2.5), embed or link to it
+
+**Section B: Constraints (grouped, expandable)**
+- Invariants with track, verifier, test_method
+- Quality dimensions with rubric, threshold
+- Preferences
+- Each constraint shows its verification capability requirement
+
+**Section C: Coverage + Environment**
+- Auto / ai_review / human coverage percentages
+- Installed tools and capabilities
+- Recommended tools (from Step 2.2 negotiation)
+
+**Section D: Ratchet Configuration**
+- Budget per WP, composite score weights
+- Low-confidence assumptions flagged
+
+**Section E: Interface Mockup Preview (if generated)**
+- Embedded preview or iframe for HTML mockups
+- For terminal-based previews (TUI/CLI), show screenshots or description
+
+**Interactive elements:**
 - "Approve & Start" button → writes `.ratchet/{intent-id}/approved` marker file
+- Per-section feedback text input
 - Agent detects the marker and proceeds to Step 4
 
+After opening the HTML page, tell the user:
+```
+Spec review page opened in browser. Review each section and either:
+- Click "Approve & Start" to begin autonomous execution
+- Or tell me what to change — I'll update the spec and regenerate the review page
+```
+
 ### Process Feedback
-- Incrementally patch spec — never regenerate
+- Incrementally patch spec — never regenerate from scratch
 - Show what changed
-- Re-confirm only the changed section
+- Regenerate the HTML review page with updates highlighted
+- Wait for user to approve again
 
 ### Finalize
 On approval: update status to `active`, proceed to autonomous execution.

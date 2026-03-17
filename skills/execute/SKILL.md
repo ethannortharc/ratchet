@@ -147,23 +147,40 @@ Spawn report-writer subagent (haiku) for that WP's results:
 
 ## Resource Tracking
 
-Track wall time and token consumption for every subagent call. This data feeds into reports and cross-project metrics.
+Track wall time, token consumption, and model for every subagent call. This data feeds into reports and cross-project metrics.
 
-Per iteration, record:
-- `executor_time`: wall time for wp-executor subagent
-- `executor_tokens`: token count from wp-executor subagent return metadata
-- `executor_model`: model used (from subagent config)
-- `verifier_time`: wall time for verifier subagent
-- `verifier_tokens`: token count from verifier subagent return metadata
-- `verifier_model`: model used (from subagent config)
+**How to capture:** When the Agent tool returns, its result includes `<usage>` metadata with `total_tokens` and `duration_ms`. Extract these values after each subagent call:
 
-Per WP, aggregate:
+```
+Before spawning subagent: record start_time = now()
+
+After subagent returns:
+  wall_time = now() - start_time
+  tokens = [extract total_tokens from Agent tool return metadata]
+  model = [the model parameter used when spawning the subagent]
+```
+
+Per iteration, write to `.ratchet/{intent-id}/review_log.yaml`:
+```yaml
+- wp: wp-01
+  iteration: 1
+  executor:
+    model: sonnet
+    wall_time_ms: 45000
+    tokens: 32000
+  verifier:
+    model: sonnet
+    wall_time_ms: 12000
+    tokens: 8500
+```
+
+Per WP, aggregate and include in report-writer input:
 - `wp_wall_time`: total elapsed time (start to completion)
 - `wp_total_tokens`: sum of all executor + verifier tokens across iterations
 - `wp_iterations`: number of ratchet iterations
 - `wp_models`: models used (for cost analysis)
 
-Append to `.ratchet/{intent-id}/review_log.yaml` alongside verification results. Pass to report-writer for per-WP and summary reports.
+**This data is REQUIRED in every report.** If resource data is missing from review_log.yaml, the report-writer must note "Resource data not captured" rather than silently omitting the section.
 
 ## Rules
 
