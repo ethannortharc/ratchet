@@ -20,18 +20,43 @@ ALL verification commands must run within the resolved workspace directory.
 
 On starting verification: set intent status to `agent_running` in state.yaml.
 
+## Auto-Verification Rule
+
+**Any code change triggers automatic full verification.** This is non-negotiable.
+
+After ANY code modification (regardless of source — WP execution, bug fix, spec update, manual edit), run the complete verification chain below. Do not skip levels. Do not wait for user to request verification.
+
 ## Verification Order (Multi-Level)
 
 Verification runs in levels, from fastest/simplest to most comprehensive:
 
 ### Level 1: Static Checks (agent track)
-Build, lint, type-check. Catches syntax errors and obvious issues.
-```bash
-# Examples:
-npm run build          # Compiles
-npm run lint           # Linting
-tsc --noEmit           # Type checking
+Build, lint, type-check, format-check. Catches syntax errors and obvious issues. **Must pass before proceeding to Level 2.**
+
+```yaml
+# By project type — install during environment preparation:
+
+web_app (React/TypeScript):
+  - tsc --noEmit              # Type checking
+  - eslint .                  # Linting
+  - prettier --check .        # Format check
+  - npm run build             # Compilation
+
+go:
+  - go vet ./...              # Static analysis
+  - golangci-lint run         # Comprehensive linting
+
+python:
+  - ruff check .              # Linting (replaces flake8+isort+pyupgrade)
+  - mypy .                    # Type checking
+
+rust:
+  - cargo clippy              # Linting
+  - cargo fmt --check         # Format check
+  - cargo build               # Compilation
 ```
+
+These tools are installed during environment preparation (env-preparer agent) and run as part of every Level 1 check. If a lint tool is not configured for the project, note it as a gap but don't block on it.
 
 ### Level 2: Unit Tests (agent track)
 Execute check commands from test suite, capture exit codes AND raw output (stdout + stderr). Pass = 0, fail = non-zero.
@@ -187,3 +212,5 @@ These appear in `/ratchet:review` for human approval.
 8. **Auto-upgrade suggestions.** When queuing a human-track item, check: could this be auto-verified with a tool? If yes, set `could_be_auto: true` and `missing_capability` with the tool name. Suggest the upgrade in `/ratchet:review`.
 9. **Basic functionality = agent responsibility.** Encoding errors, broken buttons, pages not rendering, navigation failures — these are NEVER acceptable as human review items. They must be caught by Level 3 integration tests.
 10. **Short-circuit on auto failure.** If any auto level (1/2/3) fails, do NOT run ai_review. Return the failure immediately so the ratchet loop can retry faster. AI review only runs when all auto verifications pass — evaluating quality on broken code wastes tokens and produces misleading scores.
+11. **Auto-trigger on every change.** Verification is not optional or manual. Any code modification triggers the full chain automatically. This applies during execution, updates, bug fixes — all modification paths.
+12. **Check proof exists.** After WP verification passes, confirm that the proof of completion document exists at `.ratchet/{intent-id}/proofs/wp-{id}.md`. If missing, the WP is not complete.

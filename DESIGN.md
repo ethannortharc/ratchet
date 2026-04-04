@@ -14,21 +14,25 @@ The name comes from the core mechanism: like a ratchet wrench, progress only mov
 > What truly cannot be automated, human reviews.
 > Each review makes the next project more autonomous.
 
-1. **Two touchpoints.** Human interacts at exactly two points: spec (provide direction) and review (evaluate results). Everything between runs autonomously.
+1. **Understanding first, then verification first.** Align human understanding through narrative (story) before converting to machine-verifiable constraints (spec). Verification capability determines autonomy.
 
-2. **Thorough spec.** No time limit. Section-by-section confirmation. Includes delivery/UI direction. The more invested here, the less rework later.
+2. **Two touchpoints.** Human interacts at two points: story/spec (provide direction) and review (evaluate results). Everything between runs autonomously.
 
-3. **Maximum coverage.** Agent aggressively maximizes auto-verification by requesting tools, running multi-level tests (static → unit → integration), and never leaving basic functionality to human review.
+3. **Thorough alignment.** Story phase has no time limit — iterate on personas, journey, scenarios, and prototype until the user says "this is what I want." Spec review is equally thorough. The more invested here, the less rework later.
 
-4. **EVA (Environment-Verification Architecture).** An agent's autonomy is bounded by its verification capability. Validate all verification infrastructure before execution. Install tools, scaffold project, dry-run test pipeline. Catch problems when they're cheap to fix.
+4. **Maximum coverage.** Agent aggressively maximizes auto-verification by requesting tools, running multi-level tests (static → unit → integration), and never leaving basic functionality to human review.
 
-5. **Ratchet loop.** Budget-limited, git-backed. Every iteration: execute → verify → improved? keep : discard → repeat.
+5. **EVA (Environment-Verification Architecture).** An agent's autonomy is bounded by its verification capability. Validate all verification infrastructure before execution.
 
-6. **Subagent architecture.** Specialized subagents for parallel execution — environment preparation, test generation, WP execution, verification, report writing.
+6. **Ratchet loop.** Budget-limited, git-backed. Every iteration: execute → verify → improved? keep : discard → repeat.
 
-7. **Direct feedback.** User reports issues in conversation OR via `/ratchet:review`. Both trigger the same feedback → constraint → iteration loop. No forced ceremony.
+7. **Subagent architecture.** Specialized subagents for parallel execution — environment preparation, test generation, WP execution, verification, report writing.
 
-8. **Proof of work.** Reports include raw verification outputs — actual test results, ai_review justifications — not just pass/fail counts.
+8. **Direct feedback.** User reports issues in conversation OR via `/ratchet:review`. Both trigger the same feedback → constraint → iteration loop. No forced ceremony.
+
+9. **Proof of work.** Reports include raw verification outputs — actual test results, ai_review justifications — not just pass/fail counts. Every WP produces a proof of completion document.
+
+10. **Sessions are disposable.** Files are the single source of truth. Any session can pick up from where any previous session left off. Each spec/phase starts a new session for best quality.
 
 ## Architecture Overview
 
@@ -37,11 +41,23 @@ User: "I want to build X"
   │
   ▼
 ┌─────────────────────────────────────────────────────┐
-│ Spec (human + agent, ~5-30 min)                     │
-│   Intent convergence (2-3 decisions)                │
-│   Generate Intent Spec (constraints + delivery/UI)  │
-│   Thorough section-by-section review                │
-│   Status: draft → active                            │
+│ Story (human + agent, Phase 1)                      │
+│   Personas, user journey, scenario coverage         │
+│   Visual mood + interactive prototype               │
+│   Decision log (classified)                         │
+│   Complexity estimation + phase splitting            │
+│   Status: draft                                      │
+└──────────────────────┬──────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────┐
+│ Spec (mostly automatic when story exists, Phase 2)  │
+│   Auto-extract constraints from story artifacts     │
+│   Environment negotiation (WAIT for user on tools)  │
+│   Decision classification                            │
+│   Interface mockup (iterate until approved)          │
+│   Thorough section-by-section review (HTML page)    │
+│   Status: draft → active                             │
 └──────────────────────┬──────────────────────────────┘
                        │
           === Human walks away ===
@@ -70,7 +86,7 @@ User: "I want to build X"
 │     improved? → git commit (keep)                  │
 │     not improved? → git reset (discard)            │
 │     repeat until pass or budget exhausted          │
-│                                                     │
+│   Proof of Completion per WP                        │
 │   report-writer: iteration report with proof of work│
 │   Status: → agent_complete                          │
 └──────────────────────┬──────────────────────────────┘
@@ -82,23 +98,50 @@ User: "I want to build X"
 │ Review (human + agent)                              │
 │   /ratchet:review or direct conversation            │
 │   Feedback → constraint conversion → new round      │
+│   Coverage dashboard available                       │
 │   Status: → done or → agent_running (new round)     │
 └─────────────────────────────────────────────────────┘
 ```
 
 ## Key Concepts
 
+### Story Phase
+
+Phase 1: human-language alignment. Produces five artifacts:
+
+- **Personas** — behavioral patterns and expectations of target users
+- **User Journey** — narrative walkthrough of the complete experience
+- **Scenario Coverage** — happy path + edge cases + explicit out-of-scope exclusions
+- **Visual Mood + Prototype** — style direction and clickable HTML skeleton
+- **Decision Log** — every decision classified as user-confirmed, agent-decided, or open
+
+The story phase also estimates complexity with story points. Projects > 30 points are split into phases, each with its own spec and execution session.
+
 ### Intent Spec (spec.yaml)
 
-Structured representation of human intent. Contains:
+Structured representation of human intent, auto-derived from story artifacts when available. Contains:
 
 - **Invariants**: Hard constraints with multi-level test_method (static → unit → integration)
 - **Quality Dimensions**: Measurable targets with rubrics and thresholds
 - **Preferences**: Soft guidance
 - **Delivery**: UI/UX direction (key screens, user journey, mood) or CLI direction
+- **Decisions**: Classified as human_must_decide, agent_can_decide, or unknown
 - **agent_guidance**: Natural language prompt for agent context and stuck-recovery
 
-Each constraint has: track, verifier, test_method, tools_required (structured), ratchet_metric.
+Each constraint has: track, verifier, test_method, tools_required (structured), ratchet_metric, and source (which story artifact it was extracted from).
+
+### Proof of Completion
+
+Every WP completion produces a proof document at `.ratchet/proofs/wp-{id}.md`:
+
+- **What was built** — files, functions, components
+- **Design decisions made** (agent_can_decide) — with rationale
+- **Decisions already confirmed** — references to story/spec confirmations
+- **Scenario coverage table** — input → expected → actual → status
+- **What was NOT covered** — forces agent to be honest about gaps
+- **How to verify** — manual verification steps for the user
+
+A WP is not "complete" without its proof document.
 
 ### Workspace Management
 
@@ -107,6 +150,34 @@ Each intent registered in `~/.config/ratchet/state.yaml` with:
 - Lifecycle state, ticket metadata (priority, tags, brief, current_blocker)
 
 All operations stay within workspace. Commands accept optional intent ID.
+
+### Session Management
+
+**Files are the single source of truth. Sessions are disposable.**
+
+Everything that matters is persisted to `.ratchet/` files. Any session can pick up from where any previous session left off.
+
+**Session transitions:**
+- Phase complete → save all results → suggest new session for next phase
+- Context getting full → save execution-state.yaml checkpoint → suggest new session
+- Story discussion > 30 min → suggest fresh start (all artifacts saved)
+- User explicitly asks → save checkpoint → user starts new session
+
+**Execution checkpoint (.ratchet/execution-state.yaml):**
+```yaml
+intent: string
+phase: string           # if multi-phase
+checkpoint_at: datetime
+work_packages:
+  wp-01: done
+  wp-02: running        # iteration N of budget
+  wp-03: pending
+current_wp:
+  id: string
+  iteration: int
+  best_score: float
+  last_failure: string
+```
 
 ### Intent Lifecycle
 
@@ -138,7 +209,7 @@ Level 2 — Unit: isolated function tests
 Level 3 — Integration: actually run the artifact and verify behavior
 ```
 
-Level 3 catches encoding errors, broken buttons, navigation failures — issues unit tests miss. Agent discovers available verification capabilities and aggressively recommends tools to enable Level 3 (browser testing in headless mode, HTTP clients, etc.).
+Level 3 catches encoding errors, broken buttons, navigation failures — issues unit tests miss. Agent discovers available verification capabilities and aggressively recommends tools to enable Level 3.
 
 ### Feedback Paths
 
@@ -148,26 +219,60 @@ Level 3 catches encoding errors, broken buttons, navigation failures — issues 
 
 Both trigger the same loop. Basic functionality bugs are acknowledged as agent failures and get auto-verifiable constraints added.
 
+### Story Point Estimation + Phase Splitting
+
+During story phase, agent estimates complexity:
+
+```
+1-5 points:    Trivial. Single WP, one session.
+5-15 points:   Small. 2-4 WPs, one session.
+15-30 points:  Medium. 5-10 WPs, one session.
+30-60 points:  Large. Must split into multiple phases.
+60+ points:    Very large. Must split. Each phase < 30 points.
+```
+
+Each phase gets its own story subset, spec, tests, and proofs. Phase 2's story can reference Phase 1's deliverables as inputs.
+
+### EVA — Understanding-Verification Architecture
+
+The complete EVA chain:
+
+```
+Understanding (story) → Specification (spec) → Verification (test) → Execution (code) → Proof (evidence)
+
+Each step formalizes the previous:
+  Human intuition → Human language → Machine language → Machine execution → Human-readable evidence
+```
+
+The original EVA insight ("agent autonomy = f(verification capability)") gains a predecessor: verification capability depends on specification quality, which depends on understanding alignment.
+
+**Full principle: Understanding-first, then verification-first, then execution.**
+
 ## File Layout
 
 ### Plugin
 ```
 ratchet/
 ├── .claude-plugin/plugin.json
-├── commands/                     # User-facing only
-│   ├── spec.md                   # Start new intent
+├── commands/                     # User-facing
+│   ├── story.md                  # Phase 1: human-language alignment
+│   ├── spec.md                   # Phase 2: constraint generation
 │   ├── review.md                 # Review results
+│   ├── coverage.md               # Three-layer coverage dashboard
 │   ├── status.md                 # Check progress
+│   ├── profile.md                # Set preferences
 │   ├── pause.md                  # Pause execution
 │   └── resume.md                 # Resume execution
 ├── skills/                       # Internal workflows
 │   ├── getting-started/SKILL.md
-│   ├── spec/SKILL.md             # Main orchestrator
+│   ├── story/SKILL.md            # Story phase orchestration
+│   ├── spec/SKILL.md             # Spec generation + execution chain
 │   ├── plan/SKILL.md
 │   ├── verify/SKILL.md
-│   ├── execute/SKILL.md           # Ratchet loop orchestration
+│   ├── execute/SKILL.md          # Ratchet loop orchestration
 │   ├── update/SKILL.md
 │   ├── review/SKILL.md
+│   ├── coverage/SKILL.md         # Three-layer coverage
 │   ├── status/SKILL.md
 │   ├── report/SKILL.md
 │   ├── profile/SKILL.md
@@ -195,68 +300,140 @@ ratchet/
 ```
 ~/.config/ratchet/
 ├── profile.yaml
-├── state.yaml                    # Global intent registry
+├── state.yaml                    # Global intent registry (with phase tracking)
 ├── review_queue.yaml
 └── global_metrics.yaml
 ```
 
-### Per-Intent Workspace
+### Per-Intent Workspace (simple project, < 30 points)
 ```
 <workspace>/.ratchet/
+├── story/                        # Story artifacts (Phase 1)
+│   ├── personas.md
+│   ├── journey.md
+│   ├── scenarios.md
+│   ├── mood.md
+│   ├── prototype.html
+│   ├── decisions.md
+│   └── complexity.yaml
 └── {intent-id}/                  # Each intent gets its own subdirectory
     ├── spec.yaml
     ├── plan.yaml
     ├── test-suite/
     │   ├── manifest.yaml
-    │   ├── auto/                 # Executable test files
-    │   ├── ai-review/            # Review prompts
-    │   └── human/                # Checklists
+    │   ├── auto/
+    │   ├── ai-review/
+    │   └── human/
+    ├── proofs/                   # Proof of completion per WP
+    │   └── wp-{id}.md
     ├── pre-validation.log
     ├── review_log.yaml
     ├── metrics.yaml
     ├── suggested_constraints.yaml
     ├── reports/
-    │   ├── wp-{id}.md            # Per-WP, generated after each WP
-    │   └── iter-{NNN}.md         # Summary, generated after all WPs in a round
+    │   ├── wp-{id}.md
+    │   └── iter-{NNN}.md
+    ├── execution-state.yaml      # Execution checkpoint
     └── artifacts/
 ```
 
-Multiple intents can share the same workspace directory. Each intent's artifacts are isolated in its own subdirectory (e.g., `.ratchet/prism-enneagram/`, `.ratchet/prism-mbti/`).
+### Per-Intent Workspace (multi-phase project, > 30 points)
+```
+<workspace>/.ratchet/
+├── story/                        # Top-level story (big picture)
+│   ├── personas.md
+│   ├── journey.md                # Full journey across all phases
+│   ├── scenarios.md
+│   ├── complexity.yaml           # Estimate + phase split
+│   └── decisions.md
+├── phases/
+│   ├── phase-1/
+│   │   ├── story/                # Phase 1 specific details
+│   │   │   ├── journey.md
+│   │   │   ├── scenarios.md
+│   │   │   └── prototype.html
+│   │   ├── spec.yaml
+│   │   ├── plan.yaml
+│   │   ├── test-suite/
+│   │   ├── proofs/
+│   │   └── reports/
+│   ├── phase-2/
+│   │   ├── story/
+│   │   ├── spec.yaml
+│   │   ├── inputs.yaml           # "Assumes Phase 1 delivered X"
+│   │   └── ...
+│   └── phase-3/
+│       └── ...
+├── execution-state.yaml          # Current execution checkpoint
+├── review_log.yaml
+└── coverage.yaml                 # Cross-phase coverage data
+```
+
+Multiple intents can share the same workspace directory. Each intent's artifacts are isolated in its own subdirectory.
 
 ## Commands
 
-| Command | Purpose |
-|---------|---------|
-| `/ratchet:spec` | Start new intent — everything chains from here |
-| `/ratchet:review` | Review results, give feedback |
-| `/ratchet:status` | Progress dashboard with metrics |
-| `/ratchet:pause` | Pause execution |
-| `/ratchet:resume` | Resume execution |
+**User-facing (daily use):**
 
-Internal skills (plan, verify, report, metrics, update, profile) are invoked by the agent automatically — users don't need to call them.
+| Command | Purpose | When |
+|---------|---------|------|
+| `/ratchet:story` | Define what to build (personas, journey, scenarios, prototype) | Starting a new intent |
+| `/ratchet:spec` | Convert story to verifiable constraints (usually auto-triggered) | After story, or standalone |
+| `/ratchet:review` | Review results, give feedback | When agent notifies completion |
+| `/ratchet:coverage` | View three-layer coverage dashboard | Anytime |
+| `/ratchet:status` | View execution progress across intents | Anytime |
+| `/ratchet:profile` | Set personal preferences | One-time setup |
+| `/ratchet:pause` | Pause execution | When needed |
+| `/ratchet:resume` | Resume execution | When ready |
+
+**Internal (agent calls automatically):**
+
+| Skill | Purpose | Triggered by |
+|-------|---------|-------------|
+| plan | Decompose spec into work packages | After spec confirmation |
+| verify | Three-tier verification | After any code change |
+| execute | Ratchet loop orchestration | After planning |
+| report | Generate iteration reports with proof | After each WP/iteration |
+| metrics | Track time, tokens, automation stats | Embedded in report/status |
+| update | Process story/spec modifications | User says "change X" in conversation |
 
 ## Design Decisions
 
+### Why story before spec?
+Spec mixes "what are we building" with "how do we verify it's correct." The story phase separates these concerns. Story aligns human understanding through narrative and examples. Spec converts confirmed understanding into machine-verifiable constraints. This prevents the "tests pass but not what I wanted" problem.
+
 ### Why only two human touchpoints?
-Every additional human checkpoint is a bottleneck. Spec and review are the only steps where human judgment is irreplaceable. Plan, execute, verify, report — agent can handle all of these. If the spec is thorough, execution rarely needs human intervention.
+Every additional human checkpoint is a bottleneck. Story/spec and review are the only steps where human judgment is irreplaceable. Plan, execute, verify, report — agent can handle all of these.
 
 ### Why thorough spec with no time limit?
-Changes during spec cost ≈ 0 (editing YAML). Changes during execution cost ratchet iterations. Changes during review cost spec bumps + re-execution. Front-loading specification is always cheaper.
+Changes during spec cost ~ 0 (editing YAML). Changes during execution cost ratchet iterations. Changes during review cost spec bumps + re-execution. Front-loading specification is always cheaper.
 
 ### Why delivery/UI direction in spec?
-For products with user interfaces, the interaction model IS the product. A single-page swipe quiz and a multi-page form are two different products. Not aligning on this during spec guarantees rework.
+For products with user interfaces, the interaction model IS the product. Not aligning on this during spec guarantees rework.
+
+### Why proof of completion?
+Agent says "WP done, tests pass" but user has no way to judge WHAT was done, what decisions were made, what wasn't covered. Proof documents make implicit choices visible and force agent to be honest about gaps.
+
+### Why decision classification?
+Agent makes decisions silently during execution that the user should have confirmed, or asks about decisions it could have made itself. Classification prevents both failure modes.
 
 ### Why subagents?
-Context isolation: each subagent gets a clean context focused on one task. Cost optimization: wp-executor and verifier on Sonnet (focused tasks), report-writer on Haiku (summarization). Parallelism: independent WPs run simultaneously.
+Context isolation: each subagent gets a clean context focused on one task. Cost optimization: wp-executor and verifier on Sonnet, report-writer on Haiku. Parallelism: independent WPs run simultaneously.
 
-### Why EVA (Environment-Verification Architecture)?
-An agent's autonomy is bounded by its verification capability. If it can verify its own work, it can iterate without human help. Practically: discovering that the test runner isn't configured on iteration 3 wastes 2 iterations. Validating the pipeline before execution catches these issues when they're trivial to fix.
+### Why EVA?
+An agent's autonomy is bounded by its verification capability. If it can verify its own work, it can iterate without human help. Validating the pipeline before execution catches infrastructure issues when they're trivial to fix.
 
 ### Why maximum coverage over convenient human review?
-Every constraint on human-track is a delay. Agent should exhaust all options (install tools, write integration tests, discover browser testing capabilities) before falling back to human review. Basic functionality bugs reaching human review is a system failure.
+Every constraint on human-track is a delay. Agent should exhaust all options before falling back to human review. Basic functionality bugs reaching human review is a system failure.
+
+### Why sessions are disposable?
+Long sessions degrade AI quality. Context window fills up, responses slow down. Files are the single source of truth — any session can resume from any checkpoint.
+
+### Why story point estimation?
+Large intents are too big for a single spec → execution cycle. Each phase should be completable in one session with fresh context.
 
 ### Why direct feedback?
-Requiring `/ratchet:review` for every piece of feedback adds ceremony without value. When the user is actively in conversation and sees an issue, they should just say it. The feedback conversion engine is the same either way.
+Requiring `/ratchet:review` for every piece of feedback adds ceremony without value. When the user sees an issue, they should just say it.
 
 ## Future Directions
 

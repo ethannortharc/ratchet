@@ -1,6 +1,6 @@
 ---
 name: getting-started
-description: Bootstrap for Ratchet. Loaded at session start. Establishes the two-touchpoint model — humans provide direction (spec) and evaluate results (review), agent handles everything else. Includes intent routing and usage guidance.
+description: Bootstrap for Ratchet. Loaded at session start. Establishes the story-first model — humans align through narrative (story), then specify constraints (spec), then agent executes autonomously. Includes intent routing, session resumption, and phase detection.
 ---
 
 # Ratchet — Session Bootstrap
@@ -10,50 +10,109 @@ You have the Ratchet plugin. It turns intent into verified results through auton
 ## How It Works
 
 ```
-/ratchet:spec "describe what you want"
-  → Guided conversation to define intent (~5-30 min, as thorough as needed)
-  → Confirm → Agent runs everything autonomously
+/ratchet:story "describe what you want to build"
+  → Personas, journey, scenarios, prototype — human language alignment
+  → Iterate until you say "this is what I want"
+  → Auto-transitions to spec phase
+
+Spec phase (usually automatic):
+  → Reads story artifacts, extracts constraints
+  → You confirm → Agent runs everything autonomously
   → Agent notifies when ready for review
 
 /ratchet:review
   → See results with proof of work
   → Give feedback → triggers another autonomous round
-  → Or just say the feedback directly in conversation
+  → Or just say feedback directly in conversation
 ```
 
-That's it. Two commands for most workflows.
+Story + review. Two touchpoints for most workflows.
 
 ## Intent Routing
 
-When the user describes work, determine if it targets an existing intent before creating a new one.
+When the user describes work, determine what to do:
+
+```
+User says something → Agent determines:
+
+  Mentions existing intent name/keyword?
+    → Route to that intent
+    → If status=done: reactivate, enter modification chain
+       (story update → spec re-derive → test update → execute → verify)
+    → If status=agent_running: queue modification for next iteration
+    → If status=paused: suggest /ratchet:resume, then apply changes
+    → If status=draft: continue story or spec workflow
+    → If ambiguous: ask which intent
+
+  Describes something new?
+    → /ratchet:story to create new intent
+
+  Asks about progress?
+    → /ratchet:status
+
+  Asks about coverage?
+    → /ratchet:coverage
+
+  Gives feedback on results?
+    → /ratchet:review flow (or direct modification chain)
+```
+
+### Routing Details
 
 1. Read `~/.config/ratchet/state.yaml` to see registered intents
 2. Match the user's description against existing intents (by name, workspace, tags, or description)
-3. Route:
-
-```
-User describes work
-  ├─ Matches existing intent
-  │   ├─ Status: done → reactivate (set status to active), invoke update skill
-  │   ├─ Status: agent_running → invoke update skill (changes apply next iteration)
-  │   ├─ Status: paused → suggest /ratchet:resume, then apply changes
-  │   └─ Status: draft → continue spec workflow
-  │
-  ├─ Clearly new work → /ratchet:spec
-  │
-  └─ Ambiguous → ask: "Is this a change to [intent-name], or something new?"
-```
+3. Route accordingly
 
 **Never create a new intent when the user is describing changes to an existing project.**
 
 ### When to Create a New Intent vs Update
 
-- **Update existing:** Same product, same or evolved acceptance criteria. Bug fixes, polish, feature additions within the same scope. E.g., "fix the sharing on the personality test site"
-- **New intent:** Fundamentally new work with its own acceptance criteria. E.g., "add MBTI test" (new quiz, scoring, results — all independent of existing Enneagram test). Two intents can share the same workspace directory.
+- **Update existing:** Same product, same or evolved acceptance criteria. Bug fixes, polish, feature additions within the same scope.
+- **New intent:** Fundamentally new work with its own acceptance criteria. Two intents can share the same workspace directory.
+
+## Session Resumption
+
+Every new session, detect state and resume:
+
+```
+Read ~/.config/ratchet/state.yaml
+  → Find all intents and their phases
+
+For current workspace's intent:
+
+  Case A: Story in progress (story files exist, no spec)
+    → "We were discussing [name]'s user journey.
+       Last confirmed: [artifacts].
+       Still need to confirm: [artifacts].
+       Let's continue."
+    → Load story files into context
+
+  Case B: Spec confirmed, execution not started
+    → "[Name] spec is ready. Starting execution."
+    → Begin autonomous execution
+
+  Case C: Execution in progress (execution-state.yaml exists)
+    → "[Name]: [N]/[total] WPs complete.
+       WP-[id] was at iteration [N], score [X].
+       Resuming from checkpoint."
+    → Continue execution from checkpoint
+
+  Case D: Phase complete, next phase pending
+    → "[Name] Phase [N] complete!
+       Phase [N+1] is next. Ready to start story phase?"
+
+  Case E: All phases done
+    → "[Name] is complete. All phases done.
+       Want to review, check coverage, or make modifications?"
+
+  If multiple intents exist and not in a specific workspace:
+    → Show summary of all intents
+    → Ask which one to work on
+```
 
 ## When to Use Ratchet
 
-Not everything needs the full spec → plan → execute pipeline.
+Not everything needs the full story → spec → plan → execute pipeline.
 
 **Direct fix (no Ratchet):**
 - Single bug, clear cause, few minutes to fix
@@ -70,17 +129,39 @@ Not everything needs the full spec → plan → execute pipeline.
 - "Lighthouse score 60 → 90" or "reduce bundle size by 50%"
 - Perfect for ratchet loop — each iteration measurably improves
 
-**Rule of thumb:** If you need verification that the fix actually works across multiple scenarios, use Ratchet. If it's a one-liner, just fix it.
+**Simple standalone spec (skip story):**
+- When the user already has a clear technical spec or requirements
+- `/ratchet:spec` directly, no story phase needed
+
+**Rule of thumb:** If you need verification that the fix actually works across multiple scenarios, use Ratchet. If it's a one-liner, just fix it. If it's a new product, start with `/ratchet:story`.
 
 ## Commands
 
+**User-facing (daily use):**
+
 | Command | When to use |
 |---------|-------------|
-| `/ratchet:spec` | Start something new |
-| `/ratchet:review` | Evaluate completed work |
-| `/ratchet:status` | Check progress anytime |
+| `/ratchet:story` | Start something new — align on what to build |
+| `/ratchet:spec` | Convert story to constraints (usually auto), or standalone for simple projects |
+| `/ratchet:review` | Evaluate completed work, give feedback |
+| `/ratchet:coverage` | View story/scenario/test coverage dashboard |
+| `/ratchet:status` | Check progress across intents |
+| `/ratchet:profile` | Set personal preferences (one-time) |
+
+**Also available:**
+
+| Command | When to use |
+|---------|-------------|
 | `/ratchet:pause` | Pause execution |
 | `/ratchet:resume` | Resume execution |
+
+**Internal (agent calls automatically):**
+- **plan** — decompose spec into work packages
+- **verify** — three-tier verification after any code change
+- **execute** — ratchet loop orchestration
+- **report** — iteration reports with proof of work
+- **metrics** — time, tokens, automation stats
+- **update** — process story/spec modifications from conversation
 
 ## Giving Feedback
 
@@ -90,30 +171,37 @@ Two equally valid ways:
 
 **Via `/ratchet:review`:** For processing accumulated review items, especially across multiple intents or after a break.
 
-## What Happens After Spec Confirmation
+## What Happens After Story Confirmation
 
-The agent automatically chains (no human intervention needed):
-1. Environment preparation (install tools, scaffold, discover capabilities)
-2. Test suite generation (from spec constraints)
-3. Pipeline validation (verify infrastructure works)
-4. Plan decomposition (work packages with dependencies)
-5. Ratchet execution (implement → verify → keep/discard → repeat)
-6. Report generation (with proof of work and resource usage)
-7. Human review queue (only subjective/taste items)
+The agent automatically chains:
+1. **Spec generation** — reads story artifacts, extracts constraints, generates Intent Spec
+2. **Spec review** — HTML review page for section-by-section confirmation
+3. **Session boundary** — for phases, suggest new session for execution
 
-Uses subagents for parallel execution where possible.
+After spec confirmation:
+4. Environment preparation (install tools, scaffold, discover capabilities)
+5. Test suite generation (from spec constraints)
+6. Pipeline validation (verify infrastructure works)
+7. Plan decomposition (work packages with dependencies)
+8. Ratchet execution (implement → verify → keep/discard → repeat)
+9. Report generation (with proof of work and resource usage)
+10. Human review queue (only subjective/taste items)
 
 ## Key Principles
 
-1. **Human provides direction and taste.** Agent does everything else.
-2. **Spec review is thorough.** No time limit. The more you invest here, the less rework.
-3. **Maximum coverage.** Agent aggressively maximizes auto-verification. Basic functionality is never left to human review.
-4. **EVA.** Verify that the testing infrastructure works BEFORE execution. Discover verification capabilities, test headless mode, validate all tools.
-5. **Ratchet.** Every iteration either improves (keep) or doesn't (discard). Progress is monotonic.
-6. **Proof of work.** Reports include actual test output, not just pass/fail.
+1. **Story first.** Align understanding through narrative before writing constraints.
+2. **Human provides direction and taste.** Agent does everything else.
+3. **Spec review is thorough.** No time limit. The more you invest here, the less rework.
+4. **Maximum coverage.** Agent aggressively maximizes auto-verification. Basic functionality is never left to human review.
+5. **EVA.** Verify that the testing infrastructure works BEFORE execution.
+6. **Ratchet.** Every iteration either improves (keep) or doesn't (discard). Progress is monotonic.
+7. **Proof of work.** Reports include actual test output, not just pass/fail.
+8. **Sessions are disposable.** Files are the single source of truth. Any session can resume from where any previous session left off.
+9. **Auto-verify on every change.** Any code modification triggers full verification — non-negotiable.
 
 ## State Locations
 
 - Global: `~/.config/ratchet/` (profile, intent registry, review queue)
 - Per-intent: `.ratchet/{intent-id}/` in workspace (spec, test suite, plan, logs, reports)
-- Multiple intents can share the same workspace — each gets its own subdirectory (e.g., `.ratchet/prism-enneagram/`, `.ratchet/prism-mbti/`)
+- Story: `.ratchet/story/` (top-level) or `.ratchet/phases/{phase}/story/` (per-phase)
+- Multiple intents can share the same workspace — each gets its own subdirectory

@@ -15,8 +15,9 @@ You execute a single work package from a Ratchet plan.
 You receive:
 - Work package definition (id, name, description, acceptance criteria)
 - Path to workspace (absolute — ALL operations must stay within this directory)
-- Path to `.ratchet/{intent-id}/spec.yaml` (Intent Spec with agent_guidance)
+- Path to `.ratchet/{intent-id}/spec.yaml` (Intent Spec with agent_guidance and decisions)
 - Path to relevant test files in `.ratchet/{intent-id}/test-suite/`
+- Path to story artifacts (`.ratchet/story/` or `.ratchet/phases/{phase}/story/`) if they exist
 - Iteration context (if retrying: previous failure details and score)
 
 ## Execution
@@ -62,6 +63,42 @@ After all functions/components are implemented:
 
 Only hand off to the verifier when all locally-runnable tests pass. The verifier should confirm your work, not discover basic failures.
 
+### 4. Generate Proof of Completion
+
+**A WP is NOT complete without a proof document.** After all tests pass, generate `.ratchet/{intent-id}/proofs/wp-{id}.md` (create the `proofs/` directory if needed):
+
+```markdown
+## WP-{id}: {name} — Proof of Completion
+
+### What I Built
+- [files created/modified, functions, components]
+
+### Design Decisions I Made (agent_can_decide)
+- [decision] -- [rationale]
+
+### Decisions You Already Confirmed (from story/spec)
+- [decision] (confirmed in [story/spec] phase)
+
+### Scenario Coverage
+| Scenario | Input | Expected | Actual | Status |
+|----------|-------|----------|--------|--------|
+| [scenario] | [input] | [expected] | [actual] | pass/fail |
+
+### What I Did NOT Cover (needs your judgment)
+- [gap, question, or limitation]
+
+### How You Can Verify
+1. [manual verification step]
+2. [manual verification step]
+```
+
+**Rules for proof:**
+- "What I did NOT cover" is the most important section — forces honesty about gaps
+- "Design Decisions I Made" makes implicit choices visible
+- Reference story artifacts: "you confirmed X in story phase"
+- Scenario coverage should map to scenarios from `.ratchet/story/scenarios.md`
+- If story artifacts exist, cross-reference confirmed decisions
+
 ## Rules
 
 1. **Stay in workspace.** All file operations within the registered workspace path. Never `cd` outside.
@@ -72,3 +109,5 @@ Only hand off to the verifier when all locally-runnable tests pass. The verifier
 6. **Test incrementally.** Run relevant tests after each function. Don't write all code then test at the end.
 7. **On retry, change approach.** If the same approach failed, try something different. Read the failure details carefully.
 8. **Hand off clean.** The verifier should confirm your work, not discover basic failures. All locally-runnable tests must pass before handoff.
+9. **Proof is mandatory.** Generate the proof of completion document before reporting done. No proof = not done.
+10. **Reference story.** If story artifacts exist, reference confirmed decisions and map scenarios to the story's scenario table.
