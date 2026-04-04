@@ -1,6 +1,6 @@
 {
   "name": "ratchet",
-  "version": "5.0.0",
+  "version": "5.1.0",
   "description": "Intent-driven autonomous execution. Multi-perspective story alignment (role-based perspective agents + PM synthesis), then spec, then autonomous iteration. Human provides direction (story/spec) and taste (review). Agent handles everything else — role agents, subagent architecture, multi-level verification, ratchet optimization.",
   "author": {
     "name": "Ethan"
