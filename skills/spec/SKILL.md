@@ -1,6 +1,6 @@
 ---
 name: spec
-description: "Convert confirmed story artifacts into machine-verifiable constraints, or generate spec standalone. When story exists, auto-extracts constraints from journey, scenarios, prototype, and decisions. Guides thorough section-by-section review, then auto-chains into environment preparation, test suite generation, pipeline validation, planning, and autonomous execution."
+description: "Convert confirmed story artifacts into machine-verifiable constraints, or generate spec standalone. When story exists, auto-extracts constraints from PM synthesis and role perspectives, plus journey, scenarios, prototype, and decisions. Guides thorough section-by-section review, then auto-chains into environment preparation, test suite generation, pipeline validation, planning, and autonomous execution."
 ---
 
 # Spec — Intent Formalization + Autonomous Execution Chain
@@ -73,34 +73,45 @@ For domain-specific projects, research the domain BEFORE generating the spec:
 
 ### 2.0 Auto-Extract from Story (when story exists)
 
-Read confirmed story artifacts and extract constraints:
+Read confirmed story artifacts and extract constraints. The **primary source** is the PM synthesis document, which contains unified requirements, conflict resolutions, and prioritized scope. Perspective documents and other story artifacts provide supplementary detail.
 
 ```
-From journey.md:
-  Timing expectations ("< 2 seconds") → performance invariants
-  UI elements mentioned → existence checks
-  Interactions described → functional invariants
-  Data flows → data integrity constraints
+From synthesis.md (primary source):
+  Unified requirements (Must priority) → invariants
+  Unified requirements (Should/Could) → quality dimensions or preferences
+  Conflict resolutions → classified decisions
+  Scope boundary → out-of-scope exclusions
 
-From scenarios.md:
-  Normal scenarios → happy-path test cases
-  Interruption scenarios → resilience invariants
-  Boundary scenarios → edge-case test cases
-  Out of scope → do NOT generate constraints for these
+From perspectives/*.md (supplementary detail):
+  Security perspective constraints → security-related invariants
+  DevOps perspective constraints → operational invariants
+  QA perspective scenarios → test_method enrichment
+  Developer perspective → agent_guidance enrichment
 
-From prototype.html:
+From journey.md (still used):
+  Timing expectations → performance invariants
+  UI elements → existence checks
+
+From scenarios.md (now role-tagged):
+  Each scenario has a source_role column
+  → test cases tagged with originating role
+
+From prototype.html (unchanged):
   Layout structure → visual consistency checks
-  Element sizes/positions → UI verification criteria
-  Navigation flow → interaction test cases
 
-From decisions.md:
+From decisions.md (now role-tagged):
   User-confirmed decisions → hard constraints
-  Agent-decided items → document in agent_guidance
-  "human_must_decide" → must already be resolved (story phase handles this)
+  Conflict resolutions → classified decisions with rationale
+```
 
-From mood.md:
-  Style direction → quality dimensions for visual review
-  Anti-patterns → negative constraints
+Each extracted constraint should be tagged with which role(s) sourced it:
+
+```yaml
+invariants:
+  - id: INV-01
+    claim: "Rate limiting on all production endpoints"
+    source: "synthesis.md R-05, security perspective CONSTRAINT-1"
+    source_roles: [security, devops]  # NEW: which roles identified this
 ```
 
 Present extracted constraints to user:
@@ -109,8 +120,8 @@ Present extracted constraints to user:
 Auto-extracted from story artifacts:
 
 Invariants: [N] constraints
-  INV-01: [from journey step 3: "progress preserved on browser close"]
-  INV-02: [from scenario: "all answers = 3 → balanced result"]
+  INV-01: [from synthesis R-05: "rate limiting on all production endpoints"] (security, devops)
+  INV-02: [from scenario: "all answers = 3 → balanced result"] (qa)
   ...
 
 Quality Dimensions: [N] dimensions

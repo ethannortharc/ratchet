@@ -1,0 +1,118 @@
+# Role Registry — Software Development Domain
+#
+# Defines stakeholder perspectives that participate in Ratchet's pipeline.
+# Roles are not phases — they participate WHERE their expertise matters.
+#
+# Priority levels:
+#   required    — always participates
+#   conditional — included based on project characteristics
+
+domain: software_development
+
+roles:
+  end_user:
+    name: "End User"
+    description: "Represents the people who will directly use the product"
+    contributes:
+      - User flows and expectations
+      - Usability requirements
+      - Accessibility needs
+      - Performance expectations (perceived speed)
+      - Error message clarity and recovery paths
+    participates_in: [story]
+    priority: required
+    model: sonnet
+
+  developer:
+    name: "Developer"
+    description: "Represents developers who build, maintain, or integrate with this system"
+    contributes:
+      - API design and developer experience
+      - Code maintainability and readability requirements
+      - Extensibility and integration points
+      - Documentation needs
+      - Debugging and error handling patterns
+    participates_in: [story]
+    priority: required
+    model: sonnet
+
+  devops:
+    name: "DevOps / SRE"
+    description: "Represents operational concerns — deployment, monitoring, reliability"
+    contributes:
+      - Deployment and rollback requirements
+      - Monitoring and observability needs
+      - Scaling and performance constraints
+      - Infrastructure dependencies
+      - Configuration management
+      - Logging strategy
+    participates_in: [story]
+    priority: conditional
+    condition: "Project has deployment, infrastructure, or production environment concerns"
+    model: sonnet
+
+  security:
+    name: "Security"
+    description: "Represents security posture — auth, data protection, threat surface"
+    contributes:
+      - Authentication and authorization requirements
+      - Data handling and privacy constraints
+      - Input validation requirements
+      - Threat surface analysis
+      - Dependency security
+    participates_in: [story]
+    priority: conditional
+    condition: "Project handles user data, external input, authentication, or network communication"
+    model: sonnet
+
+  qa_tester:
+    name: "QA / Tester"
+    description: "Represents testability and quality assurance"
+    contributes:
+      - Testability requirements
+      - Edge case identification
+      - Scenario completeness review
+      - Test strategy recommendations
+      - Regression risk assessment
+    participates_in: [story, verification]
+    priority: required
+    model: sonnet
+
+  pm:
+    name: "Product Manager"
+    description: "Synthesizes all perspectives into a unified, prioritized requirements document"
+    contributes:
+      - Conflict resolution between perspectives
+      - Prioritization and scope decisions (MoSCoW)
+      - Unified user stories and acceptance criteria
+      - Feature completeness assessment
+    participates_in: [story_synthesis, review]
+    priority: required
+    model: opus
+
+  manager:
+    name: "Engineering Manager"
+    description: "Plans execution sequence, manages dependencies and phasing"
+    contributes:
+      - Spec sequencing and dependency ordering
+      - Phase splitting decisions
+      - Risk identification and mitigation
+      - Milestone mapping (what's deliverable after each spec)
+    participates_in: [planning]
+    priority: required
+    model: opus
+
+# Per-project overrides live in .ratchet/roles.yaml:
+#
+# additional_roles:
+#   data_engineer:
+#     name: "Data Engineer"
+#     description: "Represents data pipeline and quality concerns"
+#     contributes:
+#       - Data validation and schema requirements
+#       - Pipeline reliability
+#       - Data freshness and consistency
+#     participates_in: [story, verification]
+#     model: sonnet
+#
+# exclude_roles: [devops]  # Not relevant for this project

@@ -16,6 +16,8 @@ The name comes from the core mechanism: like a ratchet wrench, progress only mov
 
 1. **Understanding first, then verification first.** Align human understanding through narrative (story) before converting to machine-verifiable constraints (spec). Verification capability determines autonomy.
 
+1.5. **Multi-perspective alignment.** Features serve multiple stakeholders. Story phase gathers perspectives from relevant roles (end-user, developer, DevOps, security, QA), synthesizes via PM agent, and confirms with the user — all perspectives visible. Right roles participate in right phases.
+
 2. **Two touchpoints.** Human interacts at two points: story/spec (provide direction) and review (evaluate results). Everything between runs autonomously.
 
 3. **Thorough alignment.** Story phase has no time limit — iterate on personas, journey, scenarios, and prototype until the user says "this is what I want." Spec review is equally thorough. The more invested here, the less rework later.
@@ -42,9 +44,11 @@ User: "I want to build X"
   ▼
 ┌─────────────────────────────────────────────────────┐
 │ Story (human + agent, Phase 1)                      │
-│   Personas, user journey, scenario coverage         │
-│   Visual mood + interactive prototype               │
-│   Decision log (classified)                         │
+│   Role selection (domain-specific)                   │
+│   Parallel perspective agents (sonnet)               │
+│   PM synthesis (opus) — unified requirements         │
+│   Multi-perspective user confirmation                │
+│   Manager sequencing (opus) — spec/phase planning    │
 │   Complexity estimation + phase splitting            │
 │   Status: draft                                      │
 └──────────────────────┬──────────────────────────────┘
@@ -91,6 +95,14 @@ User: "I want to build X"
 │   Status: → agent_complete                          │
 └──────────────────────┬──────────────────────────────┘
                        │
+                       ▼
+┌─────────────────────────────────────────────────────┐
+│ Acceptance Review (once per spec/phase)             │
+│   Re-spawn role agents against actual built output  │
+│   PM acceptance summary + verdict                   │
+│   Gaps → new constraints → ratchet retry if needed  │
+└──────────────────────┬──────────────────────────────┘
+                       │
           === Agent notifies human ===
                        │
                        ▼
@@ -107,15 +119,36 @@ User: "I want to build X"
 
 ### Story Phase
 
-Phase 1: human-language alignment. Produces five artifacts:
+Phase 1: multi-perspective alignment. Gathers stakeholder perspectives, synthesizes via PM, confirms with user.
 
-- **Personas** — behavioral patterns and expectations of target users
-- **User Journey** — narrative walkthrough of the complete experience
-- **Scenario Coverage** — happy path + edge cases + explicit out-of-scope exclusions
-- **Visual Mood + Prototype** — style direction and clickable HTML skeleton
-- **Decision Log** — every decision classified as user-confirmed, agent-decided, or open
+**Role-Based Process:**
+1. **Role Selection** — identify relevant stakeholder roles from domain registry (references/role-registry.yaml)
+2. **Parallel Perspective Gathering** — spawn per-role subagents (Sonnet) that each produce requirements, concerns, scenarios
+3. **PM Synthesis** — PM agent (Opus) reads all perspectives, resolves conflicts, produces unified requirements
+4. **User Confirmation** — present synthesis with all perspectives visible; user makes final calls
+5. **Manager Sequencing** — Manager agent (Opus) decomposes into specs/phases for multi-phase projects
 
-The story phase also estimates complexity with story points. Projects > 30 points are split into phases, each with its own spec and execution session.
+**Artifacts produced:**
+- **Perspectives** (`perspectives/*.md`) — per-role requirements, concerns, scenarios
+- **PM Synthesis** (`synthesis.md`) — unified requirements with conflict resolutions and prioritized scope
+- **Personas** (`personas.md`) — behavioral personas enhanced with role-tagged needs
+- **User Journey** (`journey.md`) — narrative walkthrough with cross-cutting annotations from multiple roles
+- **Scenario Coverage** (`scenarios.md`) — comprehensive table with source-role column
+- **Visual Mood + Prototype** (`mood.md` + `prototype.html`) — style direction and clickable skeleton
+- **Decision Log** (`decisions.md`) — every decision classified, with role attribution
+- **Plan Overview** (`plan-overview.md`) — Manager's spec sequencing (multi-phase projects)
+- **Active Roles** (`roles.yaml`) — which roles participated
+
+**Role Distribution:**
+| Phase | Active Roles | Purpose |
+|-------|-------------|---------|
+| Story | End-user, Developer, DevOps, Security, QA | Perspective gathering |
+| Story Synthesis | PM | Conflict resolution, unified requirements |
+| Planning | Manager | Spec sequencing, phase ordering |
+| Verification | QA | Test quality review, scenario coverage |
+| Review | PM | Structured review summary |
+
+The story phase also estimates complexity with story points. Projects > 30 points are split into phases by the Manager agent, each with its own spec and execution session.
 
 ### Intent Spec (spec.yaml)
 
@@ -193,10 +226,13 @@ any → paused │ paused → active │ any → archived
 
 | Agent | Model | Purpose |
 |-------|-------|---------|
+| perspective-{role} | sonnet | Role-specific requirements gathering (parallel) |
+| pm-synthesis | opus | Synthesize perspectives, resolve conflicts |
+| manager | opus | Spec sequencing, phase planning |
 | env-preparer | sonnet | Install tools, scaffold, validate environment |
 | test-generator | sonnet | Generate test suite from test_method fields |
 | wp-executor | sonnet | Execute single WP within workspace |
-| verifier | sonnet | 3-level verification + ai_review, composite score |
+| verifier | sonnet | 3-level verification + ai_review + QA perspective, composite score |
 | report-writer | haiku | Generate iteration reports from logs |
 
 Orchestration: env-preparer + test-generator run in parallel. Independent WPs run in parallel via multiple wp-executor instances.
@@ -238,15 +274,15 @@ Each phase gets its own story subset, spec, tests, and proofs. Phase 2's story c
 The complete EVA chain:
 
 ```
-Understanding (story) → Specification (spec) → Verification (test) → Execution (code) → Proof (evidence)
+Perspectives → Understanding → Specification → Verification → Execution → Proof → Acceptance
 
 Each step formalizes the previous:
-  Human intuition → Human language → Machine language → Machine execution → Human-readable evidence
+  Stakeholder concerns → Human language → Machine language → Machine execution → Evidence → Perspective validation
 ```
 
-The original EVA insight ("agent autonomy = f(verification capability)") gains a predecessor: verification capability depends on specification quality, which depends on understanding alignment.
+The v5 addition: before understanding (story), we must first establish WHO needs to understand and WHAT each stakeholder cares about. Multi-perspective alignment ensures no blind spots reach the specification phase.
 
-**Full principle: Understanding-first, then verification-first, then execution.**
+**Full principle: Perspectives-first, then understanding-first, then verification-first, then execution.**
 
 ## File Layout
 
@@ -309,12 +345,21 @@ ratchet/
 ```
 <workspace>/.ratchet/
 ├── story/                        # Story artifacts (Phase 1)
-│   ├── personas.md
-│   ├── journey.md
-│   ├── scenarios.md
+│   ├── perspectives/             # Per-role perspective documents
+│   │   ├── end-user.md
+│   │   ├── developer.md
+│   │   ├── devops.md
+│   │   ├── security.md
+│   │   └── qa-tester.md
+│   ├── synthesis.md              # PM synthesis output
+│   ├── personas.md               # Unified personas (role-tagged)
+│   ├── journey.md                # Unified journey (cross-cutting annotations)
+│   ├── scenarios.md              # Comprehensive scenarios (source-role column)
 │   ├── mood.md
 │   ├── prototype.html
 │   ├── decisions.md
+│   ├── plan-overview.md          # Manager's spec sequencing
+│   ├── roles.yaml                # Active roles for this project
 │   └── complexity.yaml
 └── {intent-id}/                  # Each intent gets its own subdirectory
     ├── spec.yaml
@@ -326,6 +371,11 @@ ratchet/
     │   └── human/
     ├── proofs/                   # Proof of completion per WP
     │   └── wp-{id}.md
+    ├── acceptance/               # Perspective acceptance reviews
+    │   ├── end-user.md
+    │   ├── developer.md
+    │   ├── devops.md
+    │   └── summary.md            # PM acceptance summary
     ├── pre-validation.log
     ├── review_log.yaml
     ├── metrics.yaml
@@ -341,11 +391,20 @@ ratchet/
 ```
 <workspace>/.ratchet/
 ├── story/                        # Top-level story (big picture)
-│   ├── personas.md
-│   ├── journey.md                # Full journey across all phases
-│   ├── scenarios.md
+│   ├── perspectives/             # Per-role perspective documents
+│   │   ├── end-user.md
+│   │   ├── developer.md
+│   │   ├── devops.md
+│   │   ├── security.md
+│   │   └── qa-tester.md
+│   ├── synthesis.md              # PM synthesis output
+│   ├── personas.md               # Unified personas (role-tagged)
+│   ├── journey.md                # Full journey across all phases (cross-cutting annotations)
+│   ├── scenarios.md              # Comprehensive scenarios (source-role column)
 │   ├── complexity.yaml           # Estimate + phase split
-│   └── decisions.md
+│   ├── decisions.md
+│   ├── plan-overview.md          # Manager's spec sequencing
+│   └── roles.yaml                # Active roles for this project
 ├── phases/
 │   ├── phase-1/
 │   │   ├── story/                # Phase 1 specific details
@@ -356,6 +415,11 @@ ratchet/
 │   │   ├── plan.yaml
 │   │   ├── test-suite/
 │   │   ├── proofs/
+│   │   ├── acceptance/               # Perspective acceptance reviews
+│   │   │   ├── end-user.md
+│   │   │   ├── developer.md
+│   │   │   ├── devops.md
+│   │   │   └── summary.md            # PM acceptance summary
 │   │   └── reports/
 │   ├── phase-2/
 │   │   ├── story/
@@ -417,6 +481,15 @@ Agent says "WP done, tests pass" but user has no way to judge WHAT was done, wha
 ### Why decision classification?
 Agent makes decisions silently during execution that the user should have confirmed, or asks about decisions it could have made itself. Classification prevents both failure modes.
 
+### Why role-based perspectives?
+A single agent generating story artifacts has blind spots — it's one mind trying to think of everything. Parallel perspective agents (end-user, developer, DevOps, security, QA) each focus on what they know, producing richer requirements than any single agent could. PM synthesis reconciles these into a unified view, making conflicts explicit rather than hidden.
+
+### Why PM and Manager as separate agents?
+PM and Manager serve distinct functions. PM synthesizes requirements (what to build), Manager sequences execution (in what order). Combining them would conflate prioritization with planning. PM runs during story synthesis; Manager runs after confirmation to decompose into specs/phases.
+
+### Why Sonnet for perspectives, Opus for synthesis?
+Individual perspective agents have focused, well-scoped tasks — Sonnet handles these efficiently. PM synthesis and Manager planning require deeper reasoning about trade-offs and conflicts — Opus produces better results for these complex reconciliation tasks.
+
 ### Why subagents?
 Context isolation: each subagent gets a clean context focused on one task. Cost optimization: wp-executor and verifier on Sonnet, report-writer on Haiku. Parallelism: independent WPs run simultaneously.
 
@@ -441,3 +514,6 @@ Requiring `/ratchet:review` for every piece of feedback adds ceremony without va
 - Desktop app: Tauri-based UI for non-technical users
 - Multi-agent teams: Claude Code Agent Teams for parallel WP execution
 - Cross-project learning: global insights from accumulated review logs
+- Multi-domain role registries: data science, design, research domains with specialized roles
+- Role memory: perspectives learn from past projects (e.g., "this team always neglects logging")
+- Direct role interaction: users converse with individual role agents for deep-dive discussions

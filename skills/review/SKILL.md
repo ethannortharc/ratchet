@@ -33,6 +33,20 @@ Read `~/.config/ratchet/review_queue.yaml`. If empty, report "No pending reviews
 
 💡 Agent Suggestions ([N] items)
    1. [prism]: [proposed constraint] — [rationale]
+
+📊 Acceptance Review Summary (if available)
+   Perspective acceptance review validates built output against original story perspectives:
+   
+   | Role | Rating | Key Gap |
+   |------|--------|---------|
+   | [role] | satisfied/concerns/unsatisfied | [gap or "—"] |
+   
+   - [N]/[total] Must requirements delivered
+   - [N]/[total] role perspectives fully satisfied
+   - [N] gaps found (passed spec, failed perspective intent)
+   - PM verdict: [ready / ready with caveats / needs iteration]
+   
+   Full report: .ratchet/{intent}/acceptance/summary.md
 ```
 
 **Auto-upgrade section**: For any review item where `could_be_auto: true`, show what tool is missing and what it would unlock. If the user approves, install the tool and convert the constraint from human-track to agent-track.

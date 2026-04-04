@@ -38,6 +38,7 @@ invariants:
   - id: string               # INV-01, INV-02, ...
     claim: string
     source: string            # Story artifact reference: "journey.md step 3" or "standalone"
+    source_roles: [string]        # Role IDs that identified this constraint
     track: string             # agent | human
     confidence: string        # high | medium | low
     verifier: string          # auto | ai_review | human
@@ -56,6 +57,7 @@ quality_dimensions:
   - id: string               # QD-01, QD-02, ...
     dimension: string
     source: string            # Story artifact reference or "standalone"
+    source_roles: [string]        # Role IDs that identified this constraint
     track: string
     confidence: string
     verifier: string
@@ -232,6 +234,125 @@ phases:                       # Only if recommended_split > 1
 60+ points:    Very large. Must split. Each phase < 30 points.
 ```
 
+### roles.yaml (per-project active roles)
+
+```yaml
+domain: string                    # e.g., software_development
+active_roles:
+  - id: string                    # Role ID from registry
+    name: string
+    status: active
+    reason: string                # Why included (for conditional roles)
+excluded_roles:
+  - id: string
+    reason: string                # Why excluded
+custom_roles:
+  - id: string
+    name: string
+    description: string
+    contributes: [string]
+    participates_in: [string]     # story | verification | story_synthesis | planning | review
+    model: string                 # sonnet | opus
+```
+
+### perspectives/{role-id}.md (per-role perspective document)
+
+```markdown
+# [Role Name] Perspective
+
+## Context
+What this role cares about for this project.
+
+## Requirements
+- REQ-1: [requirement] — [rationale]
+- REQ-2: [requirement] — [rationale]
+
+## Concerns
+- CONCERN-1: [what could go wrong from this perspective]
+
+## Scenarios (from this perspective)
+- SCENARIO-1: [happy/failure/edge scenario from this role's view]
+
+## Constraints
+- CONSTRAINT-1: [hard requirement from this perspective]
+
+## Out of Scope (from this perspective)
+- [what this role considers unnecessary for MVP]
+```
+
+Rules: Each perspective agent produces exactly one document. Focus on that role's unique concerns — don't duplicate other roles.
+
+### synthesis.md (PM synthesis output)
+
+```markdown
+# PM Synthesis
+
+## Unified Requirements
+| ID | Requirement | Source Roles | Priority | Conflicts |
+|----|-------------|-------------|----------|-----------|
+| R-01 | [requirement] | [role1, role2] | Must/Should/Could/Won't | [conflict note or "None"] |
+
+## Conflict Resolutions
+| Conflict | Perspectives | Resolution | Rationale |
+|----------|-------------|------------|-----------|
+| [what disagreed] | [role1 vs role2] | [decision] | [why] |
+
+## Unified Personas
+(1-3 personas with role-tagged needs)
+
+## Unified Journey
+(Narrative with cross-cutting annotations from multiple roles)
+
+## Comprehensive Scenario Table
+| Scenario | Source Role | Category | Priority |
+|----------|-----------|----------|----------|
+| [scenario] | [role] | Normal/Interruption/Boundary/Operational/Security | Must/Should/Could |
+
+## Scope Boundary
+### In Scope (consensus)
+### Out of Scope (consensus)
+### Debated (PM decided)
+- [item] — [rationale for inclusion/exclusion]
+
+## Open Decisions
+- [question] — flagged by [role] — [options]
+```
+
+Rules: PM synthesis is the primary input to the spec phase. All requirements must be traceable to at least one role perspective.
+
+### plan-overview.md (Manager's spec sequencing)
+
+```markdown
+# Plan Overview
+
+## Spec Decomposition
+
+### Phase N: [name] ([N] points)
+Requirements: [R-01, R-03, ...]
+Rationale: [why this grouping]
+Deliverable: [what user gets after this phase]
+Risk: [low/medium/high] — [why]
+Depends on: [phases]
+
+## Dependency Graph
+[Phase relationships]
+
+## Recommended Order
+1. Phase 1 — [rationale]
+2. Phase 2 — [rationale]
+
+## Risk Mitigation
+- [risk] → [mitigation strategy]
+
+## Milestones
+| After Phase | User Can... |
+|-------------|-------------|
+| Phase 1 | [what's demo-able] |
+| Phase 2 | [what's demo-able] |
+```
+
+Rules: Manager operates at a higher level than the Plan skill. Manager decides how to split into specs/phases. Plan skill decomposes each spec into work packages.
+
 ## Constraint Source Tracking
 
 When story artifacts exist, each constraint tracks its source:
@@ -240,18 +361,21 @@ When story artifacts exist, each constraint tracks its source:
 invariants:
   - id: INV-01
     claim: "Progress preserved on browser close"
-    source: "journey.md step 3: 'closes browser, returns, progress preserved'"
+    source: "synthesis.md R-03, journey.md step 3"
+    source_roles: [end_user]       # NEW: which role(s) identified this
     # ...
 
   - id: INV-02
-    claim: "Scoring produces results in < 2 seconds"
-    source: "journey.md step 4: 'brief loading animation (<2 seconds)'"
+    claim: "Rate limiting on all production endpoints"
+    source: "synthesis.md R-05, security perspective CONSTRAINT-1"
+    source_roles: [security, devops]  # NEW: multiple roles can source one constraint
     # ...
 
 quality_dimensions:
   - id: QD-01
     dimension: "Visual consistency with prototype"
     source: "prototype.html, mood.md"
+    source_roles: [end_user]
     # ...
 ```
 
@@ -528,3 +652,55 @@ Every constraint should have a `ratchet_metric` that is continuous (not just pas
 - ai_review: rubric score (1 to 5)
 - word count: "abs(actual - target) / target" (0.0 = perfect)
 - coverage: "covered / total" (0.0 to 1.0)
+
+## Acceptance Review Schemas
+
+### acceptance/{role}.md (per-role acceptance review)
+
+```markdown
+# [Role Name] Acceptance Review
+
+## Original Requirements (from perspective document)
+| Req ID | Requirement | Delivered? | Notes |
+|--------|-------------|-----------|-------|
+| REQ-1 | [requirement] | ✓ fully / △ partially / ✗ not delivered | [detail] |
+
+## Original Concerns — Addressed?
+| Concern | Addressed? | How |
+|---------|-----------|-----|
+| CONCERN-1 | ✓ yes / ✗ no | [what was done or what's missing] |
+
+## Experience Assessment
+[2-3 paragraphs from this role's perspective]
+
+## Issues Found
+- [issue that passed constraints but violates perspective intent]
+
+## Satisfaction
+Rating: satisfied | concerns | unsatisfied
+Summary: [one sentence]
+```
+
+### acceptance/summary.md (PM acceptance summary)
+
+```markdown
+# PM Acceptance Summary
+
+## Overall Assessment
+[1-2 paragraphs]
+
+## Per-Role Satisfaction
+| Role | Rating | Key Gap |
+|------|--------|---------|
+| [role] | satisfied/concerns/unsatisfied | [gap or "—"] |
+
+## Gaps (passed spec, failed perspective)
+1. [gap] — flagged by [role] — [recommendation]
+
+## Recommendations
+- [For next iteration]: [actionable items]
+- [For future work]: [items that can wait]
+
+## Verdict
+Ready for human review: yes | yes with caveats | needs another iteration
+```

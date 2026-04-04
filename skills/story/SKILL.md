@@ -1,28 +1,29 @@
 ---
 name: story
-description: "Phase 1: Align human understanding through narrative and concrete examples before specification. Produces personas, user journey, scenario coverage, visual mood + prototype, and decision log. Supports both initial creation and incremental updates. Auto-transitions to spec phase on confirmation."
+description: "Phase 1: Multi-perspective alignment through role-based story generation. Spawns parallel perspective agents (end-user, developer, DevOps, security, QA), synthesizes via PM agent, confirms with user showing all perspectives, then Manager agent sequences into specs. Auto-transitions to spec phase on confirmation."
 ---
 
-# Story — Human-Language Alignment (Phase 1)
+# Story — Multi-Perspective Alignment (Phase 1)
 
 ## Overview
 
-Story is Phase 1 — before spec, before code, before constraints. It answers "what are we building and for whom?" in human language, through narrative and examples.
+Story is Phase 1 — before spec, before code, before constraints. It answers "what are we building, for whom, and from whose perspective?" through role-based analysis and PM synthesis.
 
 ```
-User: /ratchet:story "Build an Enneagram test website called Lumina"
+User: /ratchet:story "Build a REST API for task management"
 
-Agent: generates story artifacts from intent + domain knowledge
-Agent: asks clarifying questions about key decisions
-User:  answers, agent updates artifacts
-Agent: generates scenario table, user reviews
-Agent: generates prototype, user clicks through
-User:  "This is what I want."
+Agent: selects relevant stakeholder roles for this project
+Agent: spawns parallel perspective agents (end-user, developer, DevOps, QA, security)
+Agent: each perspective agent produces requirements from their angle
+Agent: PM agent synthesizes all perspectives, resolves conflicts
+Agent: presents unified view with all perspectives visible
+User:  reviews, gives feedback, confirms
+Agent: Manager agent sequences confirmed requirements into specs/phases
 
 === Story phase complete → auto-transition to Spec ===
 ```
 
-The spec phase then reads these confirmed artifacts and auto-extracts machine-verifiable constraints. Most of the hard alignment work happens here in story, not in spec.
+The spec phase then reads the PM synthesis and auto-extracts machine-verifiable constraints. Most of the hard alignment work happens here in story, not in spec.
 
 ---
 
@@ -34,15 +35,19 @@ The spec phase then reads these confirmed artifacts and auto-extracts machine-ve
 
 ## Artifacts
 
-Story phase produces five artifacts in `.ratchet/story/` (flat project) or `.ratchet/phases/{phase-id}/story/` (multi-phase):
+Story phase produces artifacts in `.ratchet/story/` (flat project) or `.ratchet/phases/{phase-id}/story/` (multi-phase):
 
 | Artifact | File | Purpose |
 |----------|------|---------|
-| Personas | `personas.md` | Who are we building for? Behavioral patterns, not demographics |
-| Journey | `journey.md` | Narrative walkthrough of the complete experience |
-| Scenarios | `scenarios.md` | Happy path + edge cases + out-of-scope exclusions |
+| Perspectives | `perspectives/*.md` | Per-role requirements, concerns, scenarios |
+| PM Synthesis | `synthesis.md` | Unified requirements, conflict resolutions, prioritized scope |
+| Personas | `personas.md` | Behavioral personas enhanced with role-tagged needs |
+| Journey | `journey.md` | Narrative walkthrough with cross-cutting annotations |
+| Scenarios | `scenarios.md` | Comprehensive scenario table with source-role column |
 | Mood + Prototype | `mood.md` + `prototype.html` | Visual direction and clickable skeleton |
 | Decisions | `decisions.md` | Every decision made, classified and tracked |
+| Plan Overview | `plan-overview.md` | Manager's spec sequencing and milestone mapping |
+| Active Roles | `roles.yaml` | Which roles participated in this project |
 
 ---
 
@@ -56,7 +61,7 @@ For domain-specific projects (personality tests, financial tools, medical apps, 
 
 1. Identify what domain knowledge shapes the user experience (scoring methods, best practices, common pitfalls)
 2. Spawn research subagent(s) to gather this knowledge
-3. Use findings to write accurate, specific personas and journey
+3. Use findings to inform perspective agents
 
 **Skip** if the domain is generic (CRUD app, landing page, CLI tool) or agent has sufficient knowledge.
 
@@ -72,86 +77,239 @@ Register in `~/.config/ratchet/state.yaml` with status: `draft`.
 
 ---
 
-## Step 2: Generate Story Artifacts
+## Step 2: Role Selection
 
-Generate all five artifacts from the user's intent description + domain research. Present them for review.
+### 2.1 Load Role Registry
 
-### 2.1 Personas (.ratchet/story/personas.md)
+Read `references/role-registry.yaml` for domain role definitions. Check for project-level overrides in `.ratchet/roles.yaml`.
 
-Who are we building for? Focus on behavioral patterns and expectations, not demographics.
+### 2.2 Evaluate Conditional Roles
 
-```markdown
-## Primary User: [Name/Role]
-- How they discover the product
-- What they know/don't know
-- What makes them leave
-- What makes them stay
-- Device/context of use
+For each role with `priority: conditional`, evaluate whether the project involves that role's concern area:
 
-## Secondary User: [Name/Role]
-- ...
+```
+For each conditional role:
+  Read the role's condition field
+  Evaluate against the user's intent description and project type
+  Include if relevant, exclude if not
 ```
 
-**Rules:**
-- 1-3 personas max. More is noise.
-- Focus on behaviors that affect product decisions
-- Each persona should imply different design trade-offs
+### 2.3 Present Role Selection to User
 
-### 2.2 User Journey (.ratchet/story/journey.md)
+```
+For this project, I'll gather perspectives from:
 
-A narrative walkthrough written as a story, not a feature list. Each step is a moment in the user's experience.
+  ✓ End User (required) — user flows, usability, accessibility
+  ✓ Developer (required) — API design, maintainability, DX
+  ✓ DevOps / SRE (included — project deploys to Vercel) — deployment, monitoring
+  ✓ Security (included — handles user auth) — auth, data protection
+  ✓ QA / Tester (required) — testability, edge cases, scenarios
+  ✓ PM (required) — synthesis and prioritization
+  ✓ Manager (required) — spec sequencing and planning
 
-```markdown
-## Journey: [Persona Name]
+  Skipped:
+  ✗ (none for this project)
 
-1. [Phase Name]
-   [Narrative paragraph describing what the user sees, does, feels.
-    Include specific UI elements, timing expectations, emotional beats.]
-
-2. [Phase Name]
-   [...]
+Add or remove any roles? You can also define custom roles.
 ```
 
-**Rules:**
-- Write in present tense, specific details
-- Include timing expectations ("< 2 seconds", "~5 minutes")
-- Name specific UI elements and interactions
-- Cover the COMPLETE experience from discovery to completion
-- Each step should implicitly define product decisions
+### 2.4 Handle Custom Roles
 
-### 2.3 Scenario Coverage (.ratchet/story/scenarios.md)
+If user adds custom roles:
+- Create entry with name, description, contributes, participates_in
+- Save to `.ratchet/roles.yaml` for this project
 
-The journey covers the happy path. This covers everything else.
+### 2.5 Save Active Roles
 
-```markdown
-## Scenarios
+Write `.ratchet/story/roles.yaml`:
 
-Normal:
-  [check] [scenario] -> [expected outcome]
-  [check] [scenario] -> [expected outcome]
-
-Interruption:
-  [check] [scenario] -> [expected outcome]
-  [empty] [scenario] -> [expected outcome] (acceptable)
-
-Boundary:
-  [empty] [scenario] -> [expected outcome]
-  [empty] [scenario] -> [expected outcome]
-
-Out of scope (explicitly excluded):
-  [x] [feature/concern] -- [reason]
-  [x] [feature/concern] -- [reason]
+```yaml
+domain: software_development
+active_roles:
+  - id: end_user
+    name: "End User"
+    status: active
+  - id: developer
+    name: "Developer"
+    status: active
+  - id: devops
+    name: "DevOps / SRE"
+    status: active
+    reason: "project deploys to Vercel"
+  - id: security
+    name: "Security"
+    status: active
+    reason: "handles user auth"
+  - id: qa_tester
+    name: "QA / Tester"
+    status: active
+  - id: pm
+    name: "Product Manager"
+    status: active
+  - id: manager
+    name: "Engineering Manager"
+    status: active
+excluded_roles:
+  # - id: devops
+  #   reason: "pure frontend, no deployment"
+custom_roles: []
 ```
 
-**Rules:**
-- Use checkmarks for confirmed scenarios, empty boxes for unconfirmed
-- The "out of scope" section is critical — prevents agent from over-engineering
-- Include at least 3 boundary scenarios
-- Include at least 2 out-of-scope exclusions
+---
 
-### 2.4 Visual Mood (.ratchet/story/mood.md)
+## Step 3: Parallel Perspective Gathering
+
+### 3.1 Spawn Perspective Agents
+
+For each active role (except PM and Manager — they come later), spawn a parallel subagent:
+
+```
+Agent(
+  subagent_type: "general-purpose",
+  model: [role's model from registry — typically sonnet],
+  prompt: """
+    You are the {role_name} perspective agent for a software project.
+    
+    Project intent: {user_intent_description}
+    Domain context: {domain_research_findings if any}
+    User profile: {profile preferences}
+    
+    Your job: analyze this project EXCLUSIVELY from the {role_name} perspective.
+    Produce requirements, concerns, scenarios, and constraints that a 
+    {role_description} would identify.
+    
+    Focus on what matters to YOUR perspective. Don't try to cover
+    everything — other role agents handle other perspectives.
+    
+    Output format:
+    
+    # {role_name} Perspective
+    
+    ## Context
+    What this role cares about for this project.
+    
+    ## Requirements
+    - REQ-1: [requirement] — [rationale]
+    - REQ-2: [requirement] — [rationale]
+    (list all requirements from this perspective)
+    
+    ## Concerns
+    - CONCERN-1: [what could go wrong from this perspective]
+    - CONCERN-2: [risk or gap]
+    
+    ## Scenarios (from this perspective)
+    - SCENARIO-1: [happy path from this role's view]
+    - SCENARIO-2: [failure mode this role worries about]
+    - SCENARIO-3: [edge case this role would flag]
+    
+    ## Constraints
+    - CONSTRAINT-1: [hard requirement from this perspective]
+    
+    ## Out of Scope (from this perspective)
+    - [what this role considers unnecessary for MVP]
+  """,
+  run_in_background: true  # All role agents run in parallel
+)
+```
+
+### 3.2 Collect Perspective Documents
+
+As each perspective agent completes, save its output to `.ratchet/story/perspectives/{role-id}.md`.
+
+Wait for ALL perspective agents to complete before proceeding to PM synthesis.
+
+---
+
+## Step 4: PM Synthesis
+
+### 4.1 Spawn PM Agent
+
+Spawn the PM synthesis agent (on Opus for deeper analysis):
+
+```
+Agent(
+  subagent_type: "general-purpose",
+  model: opus,
+  prompt: """
+    You are the Product Manager synthesis agent.
+    
+    Project intent: {user_intent_description}
+    Domain context: {domain_research_findings}
+    
+    You have received perspective documents from these roles:
+    {list each role and path to their perspective document}
+    
+    Read ALL perspective documents carefully. Your job:
+    
+    1. UNIFIED REQUIREMENTS TABLE
+       Merge all requirements across perspectives. For each requirement:
+       - Assign an ID (R-01, R-02, ...)
+       - Note which role(s) identified it
+       - Assign priority (Must / Should / Could / Won't)
+       - Note any conflicts between perspectives
+    
+    2. CONFLICT RESOLUTIONS
+       Where perspectives disagree, resolve the conflict:
+       - State the conflict clearly
+       - List each perspective's position
+       - Your resolution and rationale
+    
+    3. UNIFIED PERSONAS
+       Create 1-3 behavioral personas that incorporate needs from all roles.
+       Tag each need with which role surfaced it.
+       Format:
+         ## Primary User: [Name/Role]
+         - How they discover the product
+         - What they know/don't know
+         - What makes them leave
+         - What makes them stay
+         - Device/context of use
+         - [Developer] needs: ...
+         - [DevOps] needs: ...
+         - [Security] needs: ...
+    
+    4. UNIFIED JOURNEY
+       Write a narrative journey for the primary persona.
+       Annotate with cross-cutting concerns:
+         "At this step, Security requires X, DevOps needs Y"
+       Format: numbered steps, narrative paragraphs, specific details,
+       timing expectations, named UI elements.
+    
+    5. COMPREHENSIVE SCENARIO TABLE
+       Merge all scenarios from all perspectives into one table:
+         | Scenario | Source Role | Category | Priority |
+       Categories: Normal, Interruption, Boundary, Operational, Security
+       Include out-of-scope items with consensus notes.
+    
+    6. SCOPE BOUNDARY
+       - In Scope (consensus across roles)
+       - Out of Scope (consensus across roles)
+       - Debated (PM decided) — with rationale for inclusion/exclusion
+    
+    7. OPEN DECISIONS
+       Items that require the user's input.
+       Tag with which role surfaced the question.
+    
+    Output the complete synthesis document.
+  """
+)
+```
+
+### 4.2 Save Synthesis Artifacts
+
+From the PM synthesis output, create:
+
+- `.ratchet/story/synthesis.md` — the full PM synthesis document
+- `.ratchet/story/personas.md` — extracted unified personas
+- `.ratchet/story/journey.md` — extracted unified journey
+- `.ratchet/story/scenarios.md` — extracted comprehensive scenario table
+- `.ratchet/story/decisions.md` — decisions log with role tags
+
+### 4.3 Generate Visual Artifacts
 
 For projects with user-facing interface:
+
+**Mood (.ratchet/story/mood.md)**:
 
 ```markdown
 ## Visual Direction
@@ -170,11 +328,7 @@ Anti-patterns: [things to explicitly avoid]
 [Mobile-first? Dense? Spacious? Single-page?]
 ```
 
-For non-UI projects, skip this artifact.
-
-### 2.5 Interactive Prototype (.ratchet/story/prototype.html)
-
-For projects with user-facing interface, generate a clickable HTML prototype:
+**Prototype (.ratchet/story/prototype.html)**:
 
 - 3-5 key screens with real layout and placeholder data
 - Inline CSS with actual colors, typography, spacing (not wireframes)
@@ -182,82 +336,77 @@ For projects with user-facing interface, generate a clickable HTML prototype:
 - Mobile viewport meta tag for mobile projects
 - Self-contained — no external dependencies
 
-Open with: `open .ratchet/story/prototype.html`
-
-**This is NOT the final product** — it's a skeleton for direction confirmation. The spec phase's mockup (Step 2.5 in spec skill) provides the more polished visual reference.
-
-For non-UI projects (CLI, library, API), skip this artifact.
-
-### 2.6 Decision Log (.ratchet/story/decisions.md)
-
-Every decision made during story phase, classified:
-
-```markdown
-## Decisions
-
-### Confirmed by User
-- [decision] (user confirmed [date])
-- [decision] (user confirmed [date])
-
-### Agent Decided (technical, no user impact)
-- [decision] -- [rationale]
-
-### Open (needs user input)
-- [question] -- [why it matters] -- [options]
-```
-
-**Rules:**
-- Every decision gets a classification
-- User-confirmed decisions reference the confirmation
-- Open decisions must be resolved before story phase completes
-- Agent decisions document rationale
+For non-UI projects (CLI, library, API), skip these artifacts.
 
 ---
 
-## Step 3: Present and Iterate
+## Step 5: Multi-Perspective User Confirmation
 
-### 3.1 Present All Artifacts
+### 5.1 Present PM Synthesis with Perspectives Visible
 
-After generating, present a summary:
+Present the synthesis so the user can see EACH role's contribution:
 
 ```
 Story artifacts generated for [project name]:
 
-1. Personas: [N] personas defined ([names])
-2. Journey: [N]-step journey for [primary persona]
-3. Scenarios: [N] normal, [N] interruption, [N] boundary, [N] excluded
-4. Mood: [mood adjectives], prototype at .ratchet/story/prototype.html
-5. Decisions: [N] confirmed, [N] agent-decided, [N] open
+## Role Perspectives Summary
 
-Open questions I need your input on:
-1. [question from decisions.md]
-2. [question from decisions.md]
-3. [question from decisions.md]
+### End User perspective ([N] requirements, [N] concerns)
+  ✓ [key requirement summaries]
+  ⚠ [concerns if any]
+
+### Developer perspective ([N] requirements, [N] concerns)
+  ✓ [key requirement summaries]
+  ⚠ [concerns if any]
+
+### DevOps perspective ([N] requirements, [N] concerns)
+  ✓ [key requirement summaries]
+  ⚠ [concerns if any]
+
+### Security perspective ([N] requirements, [N] concerns)
+  ✓ [key requirement summaries]
+  ⚠ [concerns if any]
+
+### QA perspective ([N] requirements, [N] concerns)
+  ✓ [key requirement summaries]
+  ⚠ [concerns if any]
+
+## PM Synthesis
+
+### Conflict Resolutions ([N] conflicts resolved)
+  1. [conflict] — [resolution summary]
+  2. [conflict] — [resolution summary]
+
+### Unified Requirements: [N] total
+  Must:   [N] requirements
+  Should: [N] requirements
+  Could:  [N] requirements
+  Won't:  [N] requirements (explicitly excluded)
+
+### Personas: [N] personas ([names])
+### Journey: [N]-step journey for [primary persona]
+### Scenarios: [N] total ([N] normal, [N] boundary, [N] operational, [N] security, [N] excluded)
+
+## Open Questions (need your input)
+  1. [question] — flagged by [role]
+  2. [question] — flagged by [role]
+
+Approve, adjust, or discuss?
 ```
 
-### 3.2 Ask Clarifying Questions
-
-Surface all `human_must_decide` items from the decision log. These are decisions that fundamentally change the product — present as multiple-choice when possible.
-
-**Rules:**
-- Group related questions together
-- Multiple choice preferred, one message with all questions
-- Only ask about things that affect the user experience
-- Never ask about technical implementation details
-
-### 3.3 Iterate on Feedback
+### 5.2 Iterate on Feedback
 
 User may:
-- Answer questions → update decisions.md, regenerate affected artifacts
-- Modify personas → update journey and scenarios accordingly
-- Modify journey → update scenarios
+- Answer open questions → update decisions.md, re-run PM synthesis on affected areas
+- Disagree with a conflict resolution → PM re-resolves with user's input
+- Add/remove requirements → update synthesis
+- Modify personas, journey, scenarios → update affected artifacts
 - Request prototype changes → regenerate prototype
-- Add/remove scenarios → update scenarios.md
-- Change mood direction → regenerate mood.md and prototype
+- Request a specific role to dig deeper → re-run that perspective agent with more focus
 
 Each change cascades through dependent artifacts. Always show what changed.
 
-### 3.4 Prototype Review
+### 5.3 Prototype Review (if applicable)
 
 If a prototype was generated, prompt the user to open and click through:
 
@@ -272,11 +421,11 @@ Iterate on prototype feedback until user approves.
 
 ---
 
-## Step 4: Complexity Estimation
+## Step 6: Complexity Estimation
 
 After all artifacts are confirmed, estimate complexity:
 
-### 4.1 Story Point Estimation
+### 6.1 Story Point Estimation
 
 ```yaml
 # .ratchet/story/complexity.yaml
@@ -295,29 +444,117 @@ rationale: "[why this estimate]"
 60+ points:    Very large. Must split. Each phase < 30 points.
 ```
 
-### 4.2 Auto-Split (if > 30 points)
+### 6.2 Auto-Split (if > 30 points)
 
-If total > 30 points, propose a phase split:
+If total > 30 points, proceed to Manager agent for phase splitting (Step 7). Otherwise, skip to Step 8.
+
+---
+
+## Step 7: Manager Agent — Spec Sequencing
+
+### 7.1 Spawn Manager Agent
+
+After user confirms the PM synthesis (and for projects > 30 points OR when the Manager determines splitting is beneficial):
 
 ```
-This is a ~[N] point project. I recommend splitting into [N] phases:
+Agent(
+  subagent_type: "general-purpose",
+  model: opus,
+  prompt: """
+    You are the Engineering Manager agent.
+    
+    Project intent: {user_intent_description}
+    Confirmed PM synthesis: {path to synthesis.md}
+    Complexity estimate: {total_estimate} points
+    
+    Your job: decompose the confirmed requirements into specs and phases.
+    
+    Produce a plan overview with:
+    
+    1. SPEC DECOMPOSITION
+       Which requirements group into which spec/phase.
+       Why this grouping (technical dependency, user value, risk).
+    
+    2. ORDERING
+       Which spec/phase comes first.
+       Dependency graph between specs.
+    
+    3. RISK ASSESSMENT
+       Which specs are highest risk.
+       What should be prototyped or validated first.
+    
+    4. MILESTONE MAPPING
+       What's deliverable after each spec/phase.
+       What the user can review/demo after each phase.
+    
+    Output format:
+    
+    # Plan Overview
+    
+    ## Spec Decomposition
+    
+    ### Phase 1: [name] ([N] points)
+    Requirements: [R-01, R-03, R-07, ...]
+    Rationale: [why this grouping]
+    Deliverable: [what user gets after this phase]
+    Risk: [low/medium/high] — [why]
+    
+    ### Phase 2: [name] ([N] points)
+    Requirements: [R-02, R-04, ...]
+    Depends on: [Phase 1]
+    Rationale: [why this grouping]
+    Deliverable: [what user gets]
+    Risk: [level] — [why]
+    
+    ## Dependency Graph
+    Phase 1 → Phase 2 → Phase 3
+    Phase 1 → Phase 3 (partial)
+    
+    ## Recommended Order
+    1. Phase 1 — [rationale for going first]
+    2. Phase 2 — [rationale]
+    3. Phase 3 — [rationale]
+    
+    ## Risk Mitigation
+    - [risk] → [mitigation strategy]
+  """
+)
+```
 
-Phase 1: [name] ([N] pts)
-Phase 2: [name] ([N] pts)
-Phase 3: [name] ([N] pts)
+### 7.2 Save Plan Overview
 
-Each phase gets its own spec and runs in a fresh session.
+Save to `.ratchet/story/plan-overview.md`.
+
+### 7.3 Present to User
+
+```
+Manager's plan:
+
+  Phase 1: [name] ([N] pts) — [deliverable summary]
+  Phase 2: [name] ([N] pts) — [deliverable summary]
+  Phase 3: [name] ([N] pts) — [deliverable summary]
+
+  Dependencies: Phase 1 → Phase 2 → Phase 3
+  Highest risk: Phase [N] — [reason]
+
 OK with this split? Want to adjust?
 ```
 
-On confirmation, create phase structure:
+### 7.4 Create Phase Structure
+
+On confirmation, create phase directories:
+
 ```
 .ratchet/
 ├── story/                      # Top-level story (big picture)
+│   ├── perspectives/           # All perspective documents
+│   ├── synthesis.md            # Full PM synthesis
 │   ├── personas.md
 │   ├── journey.md              # Full journey across all phases
 │   ├── scenarios.md            # All scenarios
 │   ├── complexity.yaml         # Estimate + phase split
+│   ├── plan-overview.md        # Manager's sequencing plan
+│   ├── roles.yaml              # Active roles
 │   └── decisions.md
 ├── phases/
 │   ├── phase-1/
@@ -335,32 +572,35 @@ For simple projects (< 30 points), keep flat structure — no phases directory.
 
 ---
 
-## Step 5: Confirm and Transition
+## Step 8: Confirm and Transition
 
-### 5.1 Final Confirmation
+### 8.1 Final Confirmation
 
 ```
 Story phase complete. All artifacts confirmed:
-  - [N] personas
-  - [N]-step journey  
+  - [N] roles participated ([role names])
+  - [N] perspective documents generated
+  - PM synthesis: [N] unified requirements, [N] conflicts resolved
+  - [N] personas, [N]-step journey
   - [N] scenarios ([N] normal, [N] boundary, [N] excluded)
-  - Visual mood confirmed, prototype approved
+  - [Visual mood confirmed, prototype approved | N/A for non-UI project]
   - [N] decisions resolved, [N] agent-decided
+  [- Manager plan: [N] phases | Single-phase project]
 
 Ready to generate the Intent Spec from these artifacts?
 ```
 
-### 5.2 Transition to Spec
+### 8.2 Transition to Spec
 
 On confirmation:
 1. Mark story phase as complete in state
 2. **Auto-invoke the spec skill** — do not wait for user to call `/ratchet:spec`
-3. Spec phase reads `.ratchet/story/` artifacts as input (see Change 15 in spec skill)
+3. Spec phase reads `.ratchet/story/synthesis.md` and other artifacts as input
 
-### 5.3 Session Boundary (for phases)
+### 8.3 Session Boundary (for phases)
 
 If the project was split into phases:
-- Generate Phase 1 story artifacts
+- Generate Phase 1 story artifacts (subset of full story)
 - Transition to Phase 1 spec
 - After Phase 1 spec confirmation, suggest new session for execution:
 
@@ -381,31 +621,42 @@ where we left off.
 Story supports updates after initial creation. When the user describes changes to a completed project:
 
 1. Identify which story artifacts are affected
-2. Update the artifacts (don't regenerate from scratch)
-3. Show what changed
-4. Cascade: story update → spec re-derivation → test update → execution → full verification
-5. Update decision log with new decisions
+2. Determine which role perspectives are impacted
+3. Re-run affected perspective agents if the change is significant enough
+4. Re-run PM synthesis on the affected area (not full re-synthesis for small changes)
+5. Show what changed, including any new conflict resolutions
+6. Cascade: story update → spec re-derivation → test update → execution → full verification
+7. Update decision log with new decisions
 
 ```
-User: "Add growth advice to the results page"
+User: "Add rate limiting to the API"
 
-Agent detects: story-level change.
-1. Update journey.md → add "reads growth advice" to results step
-2. Update scenarios.md → add "growth advice relevant to type" scenario
-3. Update decisions.md → log the change
-4. Cascade to spec (re-derive affected constraints)
+Agent detects: story-level change, impacts Security + DevOps + Developer perspectives.
+1. Re-run Security perspective agent on rate limiting specifics
+2. Re-run DevOps perspective agent on operational impact
+3. PM re-synthesizes affected requirements
+4. Update synthesis.md, scenarios.md, decisions.md
+5. Cascade to spec (re-derive affected constraints)
 ```
+
+For minor updates (tweaking a scenario, adjusting a persona detail), skip re-running perspective agents — just update the artifacts directly.
 
 ---
 
 ## Rules
 
-1. **Story before spec.** For non-trivial projects, always generate story artifacts before converting to constraints.
-2. **Human language only.** No YAML, no test methods, no constraint IDs in story artifacts. Those come in spec.
-3. **Out of scope is mandatory.** Every scenario table must have an explicit out-of-scope section.
-4. **Iterate until confirmed.** No time limit. The investment here saves rework later.
-5. **Decisions are classified.** Every decision is either user-confirmed, agent-decided (with rationale), or open.
-6. **Prototype is a skeleton.** Not the final product — direction confirmation only.
-7. **Cascade updates.** Any story change flows through to spec, tests, and execution.
-8. **Domain research first.** For domain-specific projects, research before writing personas and journey.
-9. **Complexity estimation.** Always estimate story points. Split if > 30 points.
+1. **Perspectives before synthesis.** Always gather role perspectives before producing unified artifacts.
+2. **PM synthesizes, user confirms.** The PM agent does the hard work of reconciliation; the user makes final calls.
+3. **Perspectives visible during confirmation.** The user must see which roles contributed what, not just the merged result.
+4. **Roles are domain-specific.** Use the role registry for the project's domain. Don't invent roles outside the registry without user input.
+5. **Parallel execution.** Perspective agents run in parallel for speed. PM and Manager run sequentially after.
+6. **Human language only.** No YAML, no test methods, no constraint IDs in story artifacts. Those come in spec.
+7. **Out of scope is mandatory.** Every scenario table must have an explicit out-of-scope section.
+8. **Iterate until confirmed.** No time limit. The investment here saves rework later.
+9. **Decisions are classified.** Every decision is either user-confirmed, agent-decided (with rationale), or open.
+10. **Prototype is a skeleton.** Not the final product — direction confirmation only.
+11. **Cascade updates.** Any story change flows through to spec, tests, and execution.
+12. **Domain research first.** For domain-specific projects, research before spawning perspective agents.
+13. **Complexity estimation.** Always estimate story points. Split if > 30 points.
+14. **Manager sequences.** For multi-phase projects, the Manager agent decides spec ordering, not the user or PM.
+15. **Sonnet for perspectives, Opus for synthesis.** Individual role agents run on Sonnet. PM and Manager run on Opus.

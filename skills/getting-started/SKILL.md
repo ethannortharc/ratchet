@@ -11,8 +11,11 @@ You have the Ratchet plugin. It turns intent into verified results through auton
 
 ```
 /ratchet:story "describe what you want to build"
-  → Personas, journey, scenarios, prototype — human language alignment
-  → Iterate until you say "this is what I want"
+  → Role selection (end-user, developer, DevOps, QA, security...)
+  → Parallel perspective agents analyze from each role's angle
+  → PM synthesizes into unified requirements
+  → You confirm with all perspectives visible
+  → Manager sequences into specs/phases
   → Auto-transitions to spec phase
 
 Spec phase (usually automatic):
@@ -174,7 +177,7 @@ Two equally valid ways:
 ## What Happens After Story Confirmation
 
 The agent automatically chains:
-1. **Spec generation** — reads story artifacts, extracts constraints, generates Intent Spec
+1. **Spec generation** — reads PM synthesis + role perspectives, extracts role-tagged constraints, generates Intent Spec
 2. **Spec review** — HTML review page for section-by-section confirmation
 3. **Session boundary** — for phases, suggest new session for execution
 
@@ -190,6 +193,7 @@ After spec confirmation:
 ## Key Principles
 
 1. **Story first.** Align understanding through narrative before writing constraints.
+1.5. **Multi-perspective.** Story gathers perspectives from relevant roles (end-user, developer, DevOps, QA, security), synthesized by PM. Features built from a single viewpoint have blind spots.
 2. **Human provides direction and taste.** Agent does everything else.
 3. **Spec review is thorough.** No time limit. The more you invest here, the less rework.
 4. **Maximum coverage.** Agent aggressively maximizes auto-verification. Basic functionality is never left to human review.

@@ -79,6 +79,13 @@ Only hand off to the verifier when all locally-runnable tests pass. The verifier
 ### Decisions You Already Confirmed (from story/spec)
 - [decision] (confirmed in [story/spec] phase)
 
+### Role Requirements Addressed
+| Role | Requirement | Status |
+|------|-------------|--------|
+| [role] | [R-XX: requirement from synthesis] | covered/partial/not covered |
+
+(Cross-reference with .ratchet/story/synthesis.md unified requirements table)
+
 ### Scenario Coverage
 | Scenario | Input | Expected | Actual | Status |
 |----------|-------|----------|--------|--------|
@@ -98,6 +105,7 @@ Only hand off to the verifier when all locally-runnable tests pass. The verifier
 - Reference story artifacts: "you confirmed X in story phase"
 - Scenario coverage should map to scenarios from `.ratchet/story/scenarios.md`
 - If story artifacts exist, cross-reference confirmed decisions
+- Cross-reference role requirements from `.ratchet/story/synthesis.md` — show which role's requirements this WP addresses
 
 ## Rules
 

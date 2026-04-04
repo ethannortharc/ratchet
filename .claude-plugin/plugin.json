@@ -1,12 +1,12 @@
 {
   "name": "ratchet",
-  "version": "4.0.0",
-  "description": "Intent-driven autonomous execution. Story-first alignment, then spec, then autonomous iteration. Human provides direction (story/spec) and taste (review). Agent handles everything else — subagent architecture, multi-level verification, ratchet optimization.",
+  "version": "5.0.0",
+  "description": "Intent-driven autonomous execution. Multi-perspective story alignment (role-based perspective agents + PM synthesis), then spec, then autonomous iteration. Human provides direction (story/spec) and taste (review). Agent handles everything else — role agents, subagent architecture, multi-level verification, ratchet optimization.",
   "author": {
     "name": "Ethan"
   },
   "repository": "https://github.com/ethannortharc/ratchet",
   "license": "MIT",
-  "keywords": ["intent", "story", "spec", "verification", "ratchet", "autonomous", "subagent", "workspace", "coverage", "proof"],
+  "keywords": ["intent", "story", "spec", "verification", "ratchet", "autonomous", "subagent", "workspace", "coverage", "proof", "roles", "perspectives"],
   "skills": "./skills/"
 }

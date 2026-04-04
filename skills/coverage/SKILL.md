@@ -20,6 +20,24 @@ Cross-reference:
 - `.ratchet/story/journey.md` (or `.ratchet/phases/{phase}/story/journey.md`) → step list
 - Work package status from plan.yaml → which steps are covered by completed WPs
 
+### Layer 1.5: Perspective Coverage
+Which role perspectives are addressed by the implementation?
+
+Cross-reference:
+- `.ratchet/story/perspectives/*.md` → requirements per role
+- `.ratchet/story/synthesis.md` → unified requirements with source_roles
+- Work package completion status → which role requirements are implemented
+
+Display:
+```
+Perspective Coverage:
+  End User:    [N]/[total] requirements covered
+  Developer:   [N]/[total] requirements covered
+  DevOps:      [N]/[total] requirements covered
+  Security:    [N]/[total] requirements covered
+  QA:          [N]/[total] requirements covered
+```
+
 ### Layer 2: Scenario Coverage
 Which scenarios from the scenario table are tested?
 
@@ -45,6 +63,11 @@ Coverage Dashboard — [intent-name]
 Layer 1: User Story
   [N]/[total] journey steps implemented
   [visual bar or list showing coverage]
+
+Layer 1.5: Perspectives
+  [role]: [N]/[total] requirements covered
+  [role]: [N]/[total] requirements covered
+  ...
 
 Layer 2: Scenarios
   Normal:       [N]/[total] tested
@@ -72,7 +95,7 @@ For projects with many scenarios (>20), generate `.ratchet/{intent-id}/coverage-
 
 ## Rules
 
-1. **No story artifacts = limited view.** If no `.ratchet/story/` exists, show only Layer 3 (test coverage).
+1. **No story artifacts = limited view.** If no `.ratchet/story/` exists, show only Layer 3 (test coverage). If no perspectives exist (pre-v5 project), skip Layer 1.5.
 2. **Cross-reference, don't duplicate.** Read existing files, don't create new data.
 3. **Highlight gaps.** The most valuable part is what's MISSING.
 4. **Include out-of-scope.** Show excluded scenarios to confirm they're still intentionally excluded.

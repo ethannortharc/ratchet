@@ -131,3 +131,31 @@ When a new capability becomes available, constraints can be upgraded. The agent 
 | Test framework | Language-specific test execution | human → auto |
 | Performance testing | Latency, throughput, bundle size | human → auto |
 | Accessibility testing | WCAG compliance, contrast, navigation | human → auto |
+
+## QA Perspective Review Criteria
+
+The QA perspective agent reviews verification results from a quality assurance standpoint. This is separate from the mechanical test pass/fail — it evaluates whether the testing is comprehensive and meaningful.
+
+### What QA Reviews
+
+| Aspect | What to check | Good (5) | Poor (1) |
+|--------|--------------|----------|----------|
+| Scenario coverage | All story scenarios have corresponding tests | >90% scenarios tested | <50% scenarios tested |
+| Edge case depth | Boundary conditions, error paths, concurrency | Tests probe limits | Only happy path |
+| Test independence | Tests don't depend on execution order | Fully independent | Order-dependent |
+| Assertion quality | Tests verify behavior, not implementation | Behavioral assertions | Implementation-coupled |
+| Regression safety | Changes can't silently break functionality | High-risk paths covered | Gaps in critical paths |
+
+### When QA Flags Concerns
+
+QA concerns are advisory but should be taken seriously:
+- **Missing scenario**: A scenario from the story has no test → suggest adding one
+- **Trivial tests**: Tests exist but only check trivial properties → recommend strengthening
+- **Regression risk**: A code change affects an area without test coverage → flag as risk
+
+### QA Review Timing
+
+- Runs ONLY on the final passing iteration of a WP (not during ratchet retries)
+- Runs AFTER all auto + ai_review pass
+- Results appear in proof of completion and iteration reports
+- Does NOT affect keep/discard decisions

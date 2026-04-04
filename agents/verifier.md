@@ -76,6 +76,28 @@ all_agent_pass: [bool]
 recommendation: keep | discard  # For ratchet decision
 ```
 
+## QA Perspective Integration
+
+After all verification levels pass and composite score is calculated, spawn a QA perspective review if this is the final passing iteration (not a ratchet retry):
+
+The QA agent is spawned as a subagent:
+- Model: sonnet
+- Input: test suite results, scenario table from story, QA perspective document
+- Output: qa_review block (see verify skill for schema)
+
+Include the QA review in the verification output:
+
+```yaml
+qa_review:
+  scenario_coverage: [ratio]
+  test_quality_score: [1-5]
+  missing_scenarios: [list]
+  sign_off: [bool]
+  concerns: [list]
+```
+
+QA review does NOT change the composite_score or recommendation. It is advisory data for proof of completion and reports.
+
 ## Rules
 
 1. **Run all available levels.** Don't stop at unit tests if integration tools are available.

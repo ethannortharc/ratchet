@@ -115,7 +115,38 @@ JUSTIFICATION: [2-3 sentences]
 ISSUES: [specific issues or "none"]
 ```
 
-### 3. Human Verifiers (human track)
+### QA Perspective Review (agent track — after all auto + ai_review pass)
+
+After standard verification completes, the QA/Tester perspective agent reviews the overall test quality and scenario coverage. This runs on Sonnet.
+
+**When to run:** Only when all auto levels (1+2+3) pass AND ai_review passes. Skipped during ratchet retry iterations to save time — only runs on the final passing iteration.
+
+**QA agent reviews:**
+1. **Scenario coverage**: Are all scenarios from `.ratchet/story/scenarios.md` (with source-role tags) tested?
+2. **Edge case coverage**: Are the edge cases from the QA perspective document (`.ratchet/story/perspectives/qa-tester.md`) covered?
+3. **Test quality**: Are tests actually testing meaningful behavior, or just asserting trivialities?
+4. **Missing scenarios**: Did execution reveal behaviors that should have tests but don't?
+5. **Regression risk**: Are there areas where changes could break existing functionality without test coverage?
+
+**QA agent produces:**
+```yaml
+qa_review:
+  scenario_coverage: [N]/[total]  # scenarios tested vs total from scenarios.md
+  edge_cases_covered: [N]/[total] # from QA perspective document
+  test_quality_score: [1-5]       # 5 = thorough, 1 = trivial assertions only
+  missing_scenarios: [list]       # scenarios without tests
+  recommendations: [list]         # suggested additional test cases
+  sign_off: true | false          # QA perspective satisfied?
+  concerns: [list]                # if sign_off is false
+```
+
+**Integration with composite score:**
+QA review score is advisory — it does NOT affect the ratchet keep/discard decision. Instead:
+- If `sign_off: false`, add QA concerns to the proof of completion document
+- If `missing_scenarios` is non-empty, append to `suggested_constraints.yaml`
+- QA recommendations appear in the iteration report
+
+### 4. Human Verifiers (human track)
 Do NOT run these inline. Queue them to `~/.config/ratchet/review_queue.yaml`:
 ```yaml
 - id: rev-{timestamp}
@@ -214,3 +245,43 @@ These appear in `/ratchet:review` for human approval.
 10. **Short-circuit on auto failure.** If any auto level (1/2/3) fails, do NOT run ai_review. Return the failure immediately so the ratchet loop can retry faster. AI review only runs when all auto verifications pass — evaluating quality on broken code wastes tokens and produces misleading scores.
 11. **Auto-trigger on every change.** Verification is not optional or manual. Any code modification triggers the full chain automatically. This applies during execution, updates, bug fixes — all modification paths.
 12. **Check proof exists.** After WP verification passes, confirm that the proof of completion document exists at `.ratchet/{intent-id}/proofs/wp-{id}.md`. If missing, the WP is not complete.
+13. **QA perspective on final pass.** After all verification passes, run QA perspective review for scenario coverage and test quality assessment. QA review is advisory — it enriches proof of completion but doesn't block the ratchet.
+
+## Perspective Acceptance Review (Post-Verification)
+
+After ALL work packages in a spec/phase pass verification (status: `agent_complete`), the execute skill triggers a Perspective Acceptance Review. This is NOT part of per-WP verification — it runs once after the full spec is verified.
+
+### Purpose
+Verification checks the **spec** (narrow constraints). Acceptance review checks the **story** (broad perspectives). An API can pass all invariants while the end-user experience is still poor. Acceptance review catches intent gaps that survived formalization.
+
+### When it runs
+```
+All WPs pass → agent_complete → Acceptance Review → PM Summary → Human Review
+```
+
+### Acceptance agents
+For each active role from `.ratchet/story/roles.yaml`, spawn a parallel acceptance agent (Sonnet):
+
+**Input per agent:**
+- Original perspective document (`.ratchet/story/perspectives/{role}.md`)
+- PM synthesis document (`.ratchet/story/synthesis.md`)
+- Proof of completion documents (`.ratchet/{intent}/proofs/`)
+- Verification results (`.ratchet/{intent}/review_log.yaml`)
+- Access to the actual built output (code, running app if applicable)
+
+**Output per agent:** `.ratchet/{intent}/acceptance/{role}.md`
+
+### PM Acceptance Summary
+After all acceptance agents complete, spawn PM agent (Opus):
+- Reads all acceptance reviews
+- Produces `.ratchet/{intent}/acceptance/summary.md`
+- Verdict: "ready for human review" / "needs another iteration"
+
+### If verdict = "needs another iteration"
+- Convert gaps into new constraints (source: `acceptance_review`)
+- Trigger ratchet iteration on affected WPs
+- Re-verify, then re-run acceptance (only affected roles)
+
+### If verdict = "ready for human review"
+- Include acceptance summary in human review queue
+- User sees test results + acceptance results + PM assessment
