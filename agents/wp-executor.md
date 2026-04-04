@@ -17,7 +17,7 @@ You receive:
 - Path to workspace (absolute — ALL operations must stay within this directory)
 - Path to `.ratchet/{intent-id}/spec.yaml` (Intent Spec with agent_guidance and decisions)
 - Path to relevant test files in `.ratchet/{intent-id}/test-suite/`
-- Path to story artifacts (`.ratchet/story/` or `.ratchet/phases/{phase}/story/`) if they exist
+- Path to story artifacts (`.ratchet/story/` or `.ratchet/sprints/{sprint}/story/`) if they exist
 - Iteration context (if retrying: previous failure details and score)
 
 ## Execution

@@ -213,11 +213,11 @@ Self-contained HTML file with:
 
 ```yaml
 total_estimate: int           # Story points
-recommended_split: int        # Number of phases (1 = no split)
+recommended_sprints: int      # Number of sprints (1 = single sprint)
 rationale: string
 
-phases:                       # Only if recommended_split > 1
-  - id: string               # phase-1, phase-2, ...
+sprints:                      # Always present (Manager always runs sprint planning)
+  - id: string               # sprint-1, sprint-2, ...
     name: string
     points: int
     includes: [string]
@@ -230,8 +230,8 @@ phases:                       # Only if recommended_split > 1
 1-5 points:    Trivial. Single WP, < 30 min agent time.
 5-15 points:   Small. 2-4 WPs, < 2 hours. One spec, one session.
 15-30 points:  Medium. 5-10 WPs. One spec, one session.
-30-60 points:  Large. Must split into multiple phases.
-60+ points:    Very large. Must split. Each phase < 30 points.
+30-60 points:  Large. Manager splits into multiple sprints.
+60+ points:    Very large. Manager splits. Each sprint < 30 points.
 ```
 
 ### roles.yaml (per-project active roles)
@@ -320,38 +320,49 @@ Rules: Each perspective agent produces exactly one document. Focus on that role'
 
 Rules: PM synthesis is the primary input to the spec phase. All requirements must be traceable to at least one role perspective.
 
-### plan-overview.md (Manager's spec sequencing)
+### sprint-plan.md (Manager's sprint planning)
 
 ```markdown
-# Plan Overview
+# Sprint Plan
 
-## Spec Decomposition
+## Sprint Decomposition
 
-### Phase N: [name] ([N] points)
+### Sprint N: [name] ([N] points)
 Requirements: [R-01, R-03, ...]
 Rationale: [why this grouping]
-Deliverable: [what user gets after this phase]
+Deliverable: [what user gets after this sprint]
 Risk: [low/medium/high] — [why]
-Depends on: [phases]
+Depends on: [sprints]
 
 ## Dependency Graph
-[Phase relationships]
+[Sprint relationships]
 
 ## Recommended Order
-1. Phase 1 — [rationale]
-2. Phase 2 — [rationale]
+1. Sprint 1 — [rationale]
+2. Sprint 2 — [rationale]
 
 ## Risk Mitigation
 - [risk] → [mitigation strategy]
 
 ## Milestones
-| After Phase | User Can... |
-|-------------|-------------|
-| Phase 1 | [what's demo-able] |
-| Phase 2 | [what's demo-able] |
+| After Sprint | User Can... |
+|--------------|-------------|
+| Sprint 1 | [what's demo-able] |
+| Sprint 2 | [what's demo-able] |
 ```
 
-Rules: Manager operates at a higher level than the Plan skill. Manager decides how to split into specs/phases. Plan skill decomposes each spec into work packages.
+Rules: Manager operates at a higher level than the Plan skill. Manager always runs sprint planning — deciding how to split the backlog into sprints. Plan skill decomposes each spec into work packages.
+
+### Agile Mapping
+
+```
+Product Backlog  =  Story phase output (synthesis.md — prioritized requirements)
+Sprint Planning  =  Manager agent (sprint-plan.md)
+Sprint           =  Spec (one subset of backlog, spec.yaml)
+Sprint Execution =  Plan → Execute → Verify → Acceptance
+Sprint Review    =  /ratchet:review
+Backlog Refinement = /ratchet:update
+```
 
 ## Constraint Source Tracking
 
@@ -404,61 +415,61 @@ Rules:
 - `agent_can_decide`: Agent chooses, documents in Proof of Completion.
 - `unknown`: If UX impact → escalate to human. If technical → decide and document.
 
-## Phase Structure (multi-phase projects)
+## Sprint Structure (multi-sprint projects)
 
-### Phase in state.yaml
+### Sprints in state.yaml
 
 ```yaml
 intents:
   - id: lumina
     workspace: /path/to/project
     total_points: 55
-    phases:
-      - id: phase-1
+    sprints:
+      - id: sprint-1
         name: "Framework + Enneagram"
         points: 25
         status: done
         spec_version: 3
         completed_at: datetime
 
-      - id: phase-2
+      - id: sprint-2
         name: "MBTI"
         points: 18
         status: active
         spec_version: 1
-        session_hint: "Start new session for this phase"
+        session_hint: "Start new session for this sprint"
 
-      - id: phase-3
+      - id: sprint-3
         name: "IQ + polish"
         points: 12
         status: pending
-        depends_on: [phase-1, phase-2]
+        depends_on: [sprint-1, sprint-2]
 ```
 
-### Per-Phase Files
+### Per-Sprint Files
 
 ```
-.ratchet/phases/{phase-id}/
-├── story/              # Phase-specific story subset
-│   ├── journey.md      # Phase journey subset
-│   ├── scenarios.md    # Phase scenarios
-│   └── prototype.html  # Phase prototype
-├── spec.yaml           # Phase-specific constraints
+.ratchet/sprints/{sprint-id}/
+├── story/              # Sprint-specific story subset
+│   ├── journey.md      # Sprint journey subset
+│   ├── scenarios.md    # Sprint scenarios
+│   └── prototype.html  # Sprint prototype
+├── spec.yaml           # Sprint-specific constraints
 ├── plan.yaml
 ├── test-suite/
 ├── proofs/
 ├── reports/
-└── inputs.yaml         # "Assumes Phase N-1 delivered X, Y, Z"
+└── inputs.yaml         # "Assumes Sprint N-1 delivered X, Y, Z"
 ```
 
 ### inputs.yaml
 
 ```yaml
 assumed_deliverables:
-  - phase: phase-1
+  - sprint: sprint-1
     deliverable: "Landing page with test catalog"
     verified: true
-  - phase: phase-1
+  - sprint: sprint-1
     deliverable: "Enneagram scoring engine"
     verified: true
 ```
@@ -469,7 +480,7 @@ Persisted checkpoint for session resumption:
 
 ```yaml
 intent: string
-phase: string               # if multi-phase
+sprint: string              # if multi-sprint
 checkpoint_at: datetime
 work_packages:
   wp-01: done
@@ -525,7 +536,7 @@ intents:
     spec_version: int
     story_complete: bool                 # Whether story phase is confirmed
     total_points: int                    # Story point estimate
-    phases: [phase]                      # If multi-phase (see Phase Structure)
+    sprints: [sprint]                    # If multi-sprint (see Sprint Structure)
     created: datetime
     last_activity: datetime
     priority: string                     # low | normal | high | urgent

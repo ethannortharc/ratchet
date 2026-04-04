@@ -57,8 +57,8 @@ User Confirm    | Human (sees all angles)   | Final authority with full picture
 Spec            | (auto-derived from PM     | Constraints tagged by source role
                 |  synthesis output)        |
                 |                           |
-Planning        | Manager                   | Sequences specs, manages deps,
-                |                           | decides phase ordering
+Planning        | Manager                   | Sprint planning, manages deps,
+                |                           | decides sprint ordering
                 |                           |
 Execution       | (autonomous, as today)    | wp-executor, existing agents
                 |                           |
@@ -160,10 +160,10 @@ roles:
 
   manager:
     name: "Engineering Manager"
-    description: "Plans execution sequence, manages dependencies and phasing"
+    description: "Plans sprints, manages dependencies and sequencing"
     contributes:
-      - Spec sequencing and dependency ordering
-      - Phase splitting decisions
+      - Sprint planning and dependency ordering
+      - Sprint scoping decisions
       - Risk identification
       - Resource allocation guidance
     participates_in: [planning]
@@ -402,11 +402,11 @@ Agent(
 
 ### Problem
 
-Today, the transition from confirmed story to specs is handled by the spec skill and plan skill in sequence. For large projects, the phase splitting happens during story (Change 22 in v4) based on story points. But this misses a crucial planning perspective: **what order should things be built in, what are the technical dependencies, and how should work be distributed across specs?**
+Today, the transition from confirmed story to specs is handled by the spec skill and plan skill in sequence. The Manager agent always runs sprint planning after story confirmation — deciding how many sprints are needed and what goes in each. But this also needs a crucial planning perspective: **what order should things be built in, what are the technical dependencies, and how should work be distributed across sprints?**
 
 ### Solution
 
-After PM synthesis is confirmed by the user, a Manager agent handles the planning layer — deciding how to decompose the confirmed requirements into specs and phases.
+After PM synthesis is confirmed by the user, a Manager agent always runs sprint planning — deciding how to decompose the confirmed requirements (the product backlog) into sprints.
 
 ### Manager agent responsibilities
 
@@ -419,18 +419,18 @@ Manager produces:
    - Why this grouping (technical dependency, user value, risk)
    
 2. Ordering
-   - Which spec/phase comes first
-   - Dependency graph between specs
+   - Which sprint comes first
+   - Dependency graph between sprints
    
 3. Risk assessment
    - Which specs are highest risk
    - What should be prototyped first
    
 4. Milestone mapping
-   - What's deliverable after each spec
-   - What the user can review/demo after each phase
+   - What's deliverable after each sprint
+   - What the user can review/demo after each sprint
 
-Output: .ratchet/story/plan-overview.md
+Output: .ratchet/story/sprint-plan.md
 ```
 
 ### How it connects to existing planning
@@ -440,12 +440,12 @@ Before (v4):
   Story → Spec → Plan (decompose spec into WPs) → Execute
 
 After (v5):
-  Story (with roles) → PM Synthesis → User Confirm
-    → Manager (decompose requirements into specs/phases)
-    → Per spec: Spec → Plan (decompose into WPs) → Execute
+  Story (with roles) → PM Synthesis (= product backlog) → User Confirm
+    → Manager sprint planning (always runs — decides how many sprints)
+    → Per sprint: Spec → Plan (decompose into WPs) → Execute → Review
 ```
 
-The Manager operates at a **higher level** than the Plan skill. Manager decides "we need 3 specs." Plan decomposes each spec into work packages.
+The Manager operates at a **higher level** than the Plan skill. Manager always runs sprint planning — e.g., "we need 3 sprints." Plan decomposes each sprint's spec into work packages.
 
 ### Files to modify
 - `skills/story/SKILL.md` — integrate Manager step after PM synthesis confirmation
@@ -599,14 +599,14 @@ User: "I want to build X"
                        │
                        ▼
 ┌─────────────────────────────────────────────────────────┐
-│ Manager Agent — Spec Sequencing                         │
-│   Decompose confirmed requirements into specs/phases    │
+│ Manager Agent — Sprint Planning                         │
+│   Decompose confirmed requirements into sprints          │
 │   Dependency ordering, risk assessment                  │
 │   Milestone mapping                                     │
 └──────────────────────┬──────────────────────────────────┘
                        │
                        ▼
-          Per spec/phase (existing flow enhanced):
+          Per sprint (existing flow enhanced):
 ┌─────────────────────────────────────────────────────────┐
 │ Spec (auto-derived from PM synthesis, role-tagged)      │
 │ Plan (decompose into WPs)                               │
@@ -617,7 +617,7 @@ User: "I want to build X"
                        │
                        ▼
 ┌─────────────────────────────────────────────────────────┐
-│ Acceptance Review (once per spec/phase completion)      │
+│ Acceptance Review (once per sprint completion)           │
 │   Re-spawn role agents against actual built output      │
 │   Each role: does built product match my perspective?   │
 │   PM acceptance summary + verdict                       │
@@ -666,7 +666,7 @@ The v5 additions:
 │   ├── qa-tester.md
 │   └── [custom-role].md
 ├── synthesis.md             # NEW: PM synthesis output
-├── plan-overview.md         # NEW: Manager spec sequencing
+├── sprint-plan.md           # NEW: Manager sprint planning
 └── roles.yaml               # NEW: active roles for this project
 ```
 
@@ -691,7 +691,7 @@ The v5 additions:
 - **Decision classification (Change 16)**: PM synthesis includes conflict resolutions, which become classified decisions.
 - **Proof of completion (Change 17)**: Proof now references which role's requirements each WP addresses.
 - **Coverage (Change 18)**: Coverage dashboard gains a perspective axis — "which role's requirements are covered?"
-- **Story splitting (Change 22)**: Manager agent replaces the complexity estimation logic; splitting is now a Manager decision.
+- **Sprint planning (Change 22)**: Manager agent always runs sprint planning; no threshold-triggered splitting. Even small projects get a sprint plan.
 - **Session management (Change 23)**: Unchanged. Sessions remain disposable.
 
 ---
@@ -713,7 +713,7 @@ We gather rich perspectives at the start, convert them into narrow constraints i
 
 ### Solution
 
-After all WPs in a spec/phase pass verification, re-spawn the original role agents (the same ones from story phase) and ask them to review the **actual built output** against their **original perspective document**. This is User Acceptance Testing, but from every stakeholder's perspective.
+After all WPs in a sprint pass verification, re-spawn the original role agents (the same ones from story phase) and ask them to review the **actual built output** against their **original perspective document**. This is User Acceptance Testing, but from every stakeholder's perspective.
 
 ### When it runs
 
@@ -727,7 +727,7 @@ PM Acceptance Summary (NEW)
 Human review (existing — now enriched with acceptance data)
 ```
 
-This runs ONCE per spec/phase completion — not per-WP, not during ratchet iterations.
+This runs ONCE per sprint completion — not per-WP, not during ratchet iterations.
 
 ### Acceptance review flow
 

@@ -17,7 +17,7 @@ description: "Three-layer coverage dashboard: user story coverage, scenario cove
 Which user journey steps are implemented?
 
 Cross-reference:
-- `.ratchet/story/journey.md` (or `.ratchet/phases/{phase}/story/journey.md`) → step list
+- `.ratchet/story/journey.md` (or `.ratchet/sprints/{sprint}/story/journey.md`) → step list
 - Work package status from plan.yaml → which steps are covered by completed WPs
 
 ### Layer 1.5: Perspective Coverage

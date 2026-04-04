@@ -1,11 +1,16 @@
 # Role Registry — Software Development Domain
 #
-# Defines stakeholder perspectives that participate in Ratchet's pipeline.
-# Roles are not phases — they participate WHERE their expertise matters.
+# TEMPLATE LIBRARY of common stakeholder perspectives.
+# This is a starting point, NOT a checklist. Roles are DERIVED from the
+# intent — the story skill analyzes what expertise is needed and may:
+#   - Use templates from here as-is
+#   - Customize templates for the specific project
+#   - Create entirely new roles not listed here
 #
 # Priority levels:
-#   required    — always participates
-#   conditional — included based on project characteristics
+#   required    — structural role, always participates (PM, Manager)
+#   common      — frequently needed, but derived from intent analysis
+#   specialized — only relevant for specific project types
 
 domain: software_development
 
@@ -20,7 +25,7 @@ roles:
       - Performance expectations (perceived speed)
       - Error message clarity and recovery paths
     participates_in: [story]
-    priority: required
+    priority: common
     model: sonnet
 
   developer:
@@ -33,7 +38,7 @@ roles:
       - Documentation needs
       - Debugging and error handling patterns
     participates_in: [story]
-    priority: required
+    priority: common
     model: sonnet
 
   devops:
@@ -47,8 +52,8 @@ roles:
       - Configuration management
       - Logging strategy
     participates_in: [story]
-    priority: conditional
-    condition: "Project has deployment, infrastructure, or production environment concerns"
+    priority: specialized
+    typical_when: "Project has deployment, infrastructure, or production environment concerns"
     model: sonnet
 
   security:
@@ -61,8 +66,8 @@ roles:
       - Threat surface analysis
       - Dependency security
     participates_in: [story]
-    priority: conditional
-    condition: "Project handles user data, external input, authentication, or network communication"
+    priority: specialized
+    typical_when: "Project handles user data, external input, authentication, or network communication"
     model: sonnet
 
   qa_tester:
@@ -75,7 +80,7 @@ roles:
       - Test strategy recommendations
       - Regression risk assessment
     participates_in: [story, verification]
-    priority: required
+    priority: common
     model: sonnet
 
   pm:

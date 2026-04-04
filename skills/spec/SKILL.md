@@ -21,7 +21,7 @@ Without story (standalone):
 
 ## Step 0: Detect Story Artifacts
 
-Check for `.ratchet/story/` (flat project) or `.ratchet/phases/{phase}/story/` (multi-phase).
+Check for `.ratchet/story/` (single sprint) or `.ratchet/sprints/{sprint}/story/` (multi-sprint).
 
 **If story exists** → Skip to Step 2 (auto-extraction mode). Story already handled intent convergence, domain research, and workspace registration.
 

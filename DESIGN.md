@@ -18,6 +18,8 @@ The name comes from the core mechanism: like a ratchet wrench, progress only mov
 
 1.5. **Multi-perspective alignment.** Features serve multiple stakeholders. Story phase gathers perspectives from relevant roles (end-user, developer, DevOps, security, QA), synthesizes via PM agent, and confirms with the user — all perspectives visible. Right roles participate in right phases.
 
+1.6. **Story is the backlog. Spec is a sprint.** Story phase produces the product backlog (all requirements, prioritized). The Manager agent always runs sprint planning — deciding how many sprints and what goes in each. Each spec executes one sprint. This maps directly to agile: backlog → sprint planning → sprint → review.
+
 2. **Two touchpoints.** Human interacts at two points: story/spec (provide direction) and review (evaluate results). Everything between runs autonomously.
 
 3. **Thorough alignment.** Story phase has no time limit — iterate on personas, journey, scenarios, and prototype until the user says "this is what I want." Spec review is equally thorough. The more invested here, the less rework later.
@@ -34,7 +36,7 @@ The name comes from the core mechanism: like a ratchet wrench, progress only mov
 
 9. **Proof of work.** Reports include raw verification outputs — actual test results, ai_review justifications — not just pass/fail counts. Every WP produces a proof of completion document.
 
-10. **Sessions are disposable.** Files are the single source of truth. Any session can pick up from where any previous session left off. Each spec/phase starts a new session for best quality.
+10. **Sessions are disposable.** Files are the single source of truth. Any session can pick up from where any previous session left off. Each sprint starts a new session for best quality.
 
 ## Architecture Overview
 
@@ -43,13 +45,13 @@ User: "I want to build X"
   │
   ▼
 ┌─────────────────────────────────────────────────────┐
-│ Story (human + agent, Phase 1)                      │
+│ Story (human + agent — Product backlog)              │
 │   Role selection (domain-specific)                   │
 │   Parallel perspective agents (sonnet)               │
 │   PM synthesis (opus) — unified requirements         │
 │   Multi-perspective user confirmation                │
-│   Manager sequencing (opus) — spec/phase planning    │
-│   Complexity estimation + phase splitting            │
+│   Sprint planning (Manager, always)                  │
+│   Backlog estimation + sprint planning (Manager, always)│
 │   Status: draft                                      │
 └──────────────────────┬──────────────────────────────┘
                        │
@@ -97,7 +99,7 @@ User: "I want to build X"
                        │
                        ▼
 ┌─────────────────────────────────────────────────────┐
-│ Acceptance Review (once per spec/phase)             │
+│ Acceptance Review (once per sprint)                  │
 │   Re-spawn role agents against actual built output  │
 │   PM acceptance summary + verdict                   │
 │   Gaps → new constraints → ratchet retry if needed  │
@@ -122,11 +124,11 @@ User: "I want to build X"
 Phase 1: multi-perspective alignment. Gathers stakeholder perspectives, synthesizes via PM, confirms with user.
 
 **Role-Based Process:**
-1. **Role Selection** — identify relevant stakeholder roles from domain registry (references/role-registry.yaml)
+1. **Intent Analysis + Role Derivation** — analyze what the intent needs, detect greenfield vs. existing project, derive roles from expertise gaps (registry is a template library, not a checklist)
 2. **Parallel Perspective Gathering** — spawn per-role subagents (Sonnet) that each produce requirements, concerns, scenarios
 3. **PM Synthesis** — PM agent (Opus) reads all perspectives, resolves conflicts, produces unified requirements
 4. **User Confirmation** — present synthesis with all perspectives visible; user makes final calls
-5. **Manager Sequencing** — Manager agent (Opus) decomposes into specs/phases for multi-phase projects
+5. **Manager Sprint Planning** — Manager agent (Opus) always runs sprint planning, decomposes into sprints
 
 **Artifacts produced:**
 - **Perspectives** (`perspectives/*.md`) — per-role requirements, concerns, scenarios
@@ -136,7 +138,7 @@ Phase 1: multi-perspective alignment. Gathers stakeholder perspectives, synthesi
 - **Scenario Coverage** (`scenarios.md`) — comprehensive table with source-role column
 - **Visual Mood + Prototype** (`mood.md` + `prototype.html`) — style direction and clickable skeleton
 - **Decision Log** (`decisions.md`) — every decision classified, with role attribution
-- **Plan Overview** (`plan-overview.md`) — Manager's spec sequencing (multi-phase projects)
+- **Sprint Plan** (`sprint-plan.md`) — Manager's sprint planning
 - **Active Roles** (`roles.yaml`) — which roles participated
 
 **Role Distribution:**
@@ -144,11 +146,11 @@ Phase 1: multi-perspective alignment. Gathers stakeholder perspectives, synthesi
 |-------|-------------|---------|
 | Story | End-user, Developer, DevOps, Security, QA | Perspective gathering |
 | Story Synthesis | PM | Conflict resolution, unified requirements |
-| Planning | Manager | Spec sequencing, phase ordering |
+| Planning | Manager | Sprint planning, spec sequencing |
 | Verification | QA | Test quality review, scenario coverage |
 | Review | PM | Structured review summary |
 
-The story phase also estimates complexity with story points. Projects > 30 points are split into phases by the Manager agent, each with its own spec and execution session.
+The story phase also estimates complexity with story points. The Manager agent always runs sprint planning — deciding how many sprints are needed and which backlog items go into each. Each sprint becomes one Spec with its own execution session.
 
 ### Intent Spec (spec.yaml)
 
@@ -191,7 +193,7 @@ All operations stay within workspace. Commands accept optional intent ID.
 Everything that matters is persisted to `.ratchet/` files. Any session can pick up from where any previous session left off.
 
 **Session transitions:**
-- Phase complete → save all results → suggest new session for next phase
+- Sprint complete → save all results → suggest new session for next sprint
 - Context getting full → save execution-state.yaml checkpoint → suggest new session
 - Story discussion > 30 min → suggest fresh start (all artifacts saved)
 - User explicitly asks → save checkpoint → user starts new session
@@ -199,7 +201,7 @@ Everything that matters is persisted to `.ratchet/` files. Any session can pick 
 **Execution checkpoint (.ratchet/execution-state.yaml):**
 ```yaml
 intent: string
-phase: string           # if multi-phase
+sprint: string          # if multi-sprint
 checkpoint_at: datetime
 work_packages:
   wp-01: done
@@ -228,7 +230,7 @@ any → paused │ paused → active │ any → archived
 |-------|-------|---------|
 | perspective-{role} | sonnet | Role-specific requirements gathering (parallel) |
 | pm-synthesis | opus | Synthesize perspectives, resolve conflicts |
-| manager | opus | Spec sequencing, phase planning |
+| manager | opus | Sprint planning, spec sequencing |
 | env-preparer | sonnet | Install tools, scaffold, validate environment |
 | test-generator | sonnet | Generate test suite from test_method fields |
 | wp-executor | sonnet | Execute single WP within workspace |
@@ -255,7 +257,7 @@ Level 3 catches encoding errors, broken buttons, navigation failures — issues 
 
 Both trigger the same loop. Basic functionality bugs are acknowledged as agent failures and get auto-verifiable constraints added.
 
-### Story Point Estimation + Phase Splitting
+### Story Point Estimation + Sprint Planning
 
 During story phase, agent estimates complexity:
 
@@ -263,11 +265,11 @@ During story phase, agent estimates complexity:
 1-5 points:    Trivial. Single WP, one session.
 5-15 points:   Small. 2-4 WPs, one session.
 15-30 points:  Medium. 5-10 WPs, one session.
-30-60 points:  Large. Must split into multiple phases.
-60+ points:    Very large. Must split. Each phase < 30 points.
+30-60 points:  Large. Manager splits into multiple sprints.
+60+ points:    Very large. Manager splits. Each sprint < 30 points.
 ```
 
-Each phase gets its own story subset, spec, tests, and proofs. Phase 2's story can reference Phase 1's deliverables as inputs.
+The Manager always runs sprint planning. Each sprint gets its own story subset, spec, tests, and proofs. Sprint 2's story can reference Sprint 1's deliverables as inputs.
 
 ### EVA — Understanding-Verification Architecture
 
@@ -336,21 +338,21 @@ ratchet/
 ```
 ~/.config/ratchet/
 ├── profile.yaml
-├── state.yaml                    # Global intent registry (with phase tracking)
+├── state.yaml                    # Global intent registry (with sprint tracking)
 ├── review_queue.yaml
 └── global_metrics.yaml
 ```
 
-### Per-Intent Workspace (simple project, < 30 points)
+### Per-Intent Workspace (single-sprint project)
 ```
 <workspace>/.ratchet/
 ├── story/                        # Story artifacts (Phase 1)
-│   ├── perspectives/             # Per-role perspective documents
+│   ├── codebase-analysis.md      # Existing project analysis (if not greenfield)
+│   ├── domain-research.md        # Domain research findings (if domain-specific)
+│   ├── perspectives/             # Per-role perspective documents (derived from intent)
 │   │   ├── end-user.md
 │   │   ├── developer.md
-│   │   ├── devops.md
-│   │   ├── security.md
-│   │   └── qa-tester.md
+│   │   └── [intent-derived-roles].md
 │   ├── synthesis.md              # PM synthesis output
 │   ├── personas.md               # Unified personas (role-tagged)
 │   ├── journey.md                # Unified journey (cross-cutting annotations)
@@ -358,8 +360,8 @@ ratchet/
 │   ├── mood.md
 │   ├── prototype.html
 │   ├── decisions.md
-│   ├── plan-overview.md          # Manager's spec sequencing
-│   ├── roles.yaml                # Active roles for this project
+│   ├── sprint-plan.md            # Manager's sprint planning
+│   ├── roles.yaml                # Derived roles for this project (not a registry filter)
 │   └── complexity.yaml
 └── {intent-id}/                  # Each intent gets its own subdirectory
     ├── spec.yaml
@@ -387,27 +389,25 @@ ratchet/
     └── artifacts/
 ```
 
-### Per-Intent Workspace (multi-phase project, > 30 points)
+### Per-Intent Workspace (multi-sprint project)
 ```
 <workspace>/.ratchet/
 ├── story/                        # Top-level story (big picture)
-│   ├── perspectives/             # Per-role perspective documents
-│   │   ├── end-user.md
-│   │   ├── developer.md
-│   │   ├── devops.md
-│   │   ├── security.md
-│   │   └── qa-tester.md
+│   ├── codebase-analysis.md      # Existing project analysis (if not greenfield)
+│   ├── domain-research.md        # Domain research findings (if domain-specific)
+│   ├── perspectives/             # Per-role perspective documents (derived from intent)
+│   │   └── [intent-derived-roles].md
 │   ├── synthesis.md              # PM synthesis output
 │   ├── personas.md               # Unified personas (role-tagged)
-│   ├── journey.md                # Full journey across all phases (cross-cutting annotations)
+│   ├── journey.md                # Full journey across all sprints (cross-cutting annotations)
 │   ├── scenarios.md              # Comprehensive scenarios (source-role column)
-│   ├── complexity.yaml           # Estimate + phase split
+│   ├── complexity.yaml           # Estimate + sprint split
 │   ├── decisions.md
-│   ├── plan-overview.md          # Manager's spec sequencing
+│   ├── sprint-plan.md            # Manager's sprint planning
 │   └── roles.yaml                # Active roles for this project
-├── phases/
-│   ├── phase-1/
-│   │   ├── story/                # Phase 1 specific details
+├── sprints/
+│   ├── sprint-1/
+│   │   ├── story/                # Sprint 1 specific details
 │   │   │   ├── journey.md
 │   │   │   ├── scenarios.md
 │   │   │   └── prototype.html
@@ -421,16 +421,16 @@ ratchet/
 │   │   │   ├── devops.md
 │   │   │   └── summary.md            # PM acceptance summary
 │   │   └── reports/
-│   ├── phase-2/
+│   ├── sprint-2/
 │   │   ├── story/
 │   │   ├── spec.yaml
-│   │   ├── inputs.yaml           # "Assumes Phase 1 delivered X"
+│   │   ├── inputs.yaml           # "Assumes Sprint 1 delivered X"
 │   │   └── ...
-│   └── phase-3/
+│   └── sprint-3/
 │       └── ...
 ├── execution-state.yaml          # Current execution checkpoint
 ├── review_log.yaml
-└── coverage.yaml                 # Cross-phase coverage data
+└── coverage.yaml                 # Cross-sprint coverage data
 ```
 
 Multiple intents can share the same workspace directory. Each intent's artifacts are isolated in its own subdirectory.
@@ -485,7 +485,7 @@ Agent makes decisions silently during execution that the user should have confir
 A single agent generating story artifacts has blind spots — it's one mind trying to think of everything. Parallel perspective agents (end-user, developer, DevOps, security, QA) each focus on what they know, producing richer requirements than any single agent could. PM synthesis reconciles these into a unified view, making conflicts explicit rather than hidden.
 
 ### Why PM and Manager as separate agents?
-PM and Manager serve distinct functions. PM synthesizes requirements (what to build), Manager sequences execution (in what order). Combining them would conflate prioritization with planning. PM runs during story synthesis; Manager runs after confirmation to decompose into specs/phases.
+PM and Manager serve distinct functions. PM synthesizes requirements (what to build — the product backlog), Manager runs sprint planning (how many sprints, what goes in each). Combining them would conflate prioritization with planning. PM runs during story synthesis; Manager always runs after confirmation to plan sprints.
 
 ### Why Sonnet for perspectives, Opus for synthesis?
 Individual perspective agents have focused, well-scoped tasks — Sonnet handles these efficiently. PM synthesis and Manager planning require deeper reasoning about trade-offs and conflicts — Opus produces better results for these complex reconciliation tasks.
@@ -502,8 +502,8 @@ Every constraint on human-track is a delay. Agent should exhaust all options bef
 ### Why sessions are disposable?
 Long sessions degrade AI quality. Context window fills up, responses slow down. Files are the single source of truth — any session can resume from any checkpoint.
 
-### Why story point estimation?
-Large intents are too big for a single spec → execution cycle. Each phase should be completable in one session with fresh context.
+### Why story points and sprint planning?
+Story point estimation helps the Manager agent make informed sprint planning decisions. The Manager always runs — even for small projects — because sprint planning is a structural step, not a threshold-triggered optimization. A 15-point project might still benefit from being split into two focused sprints rather than one sprawling one.
 
 ### Why direct feedback?
 Requiring `/ratchet:review` for every piece of feedback adds ceremony without value. When the user sees an issue, they should just say it.

@@ -1,6 +1,6 @@
 ---
 name: getting-started
-description: Bootstrap for Ratchet. Loaded at session start. Establishes the story-first model — humans align through narrative (story), then specify constraints (spec), then agent executes autonomously. Includes intent routing, session resumption, and phase detection.
+description: Bootstrap for Ratchet. Loaded at session start. Establishes the story-first model — humans align through narrative (story), then specify constraints (spec), then agent executes autonomously. Includes intent routing, session resumption, and sprint detection.
 ---
 
 # Ratchet — Session Bootstrap
@@ -15,7 +15,7 @@ You have the Ratchet plugin. It turns intent into verified results through auton
   → Parallel perspective agents analyze from each role's angle
   → PM synthesizes into unified requirements
   → You confirm with all perspectives visible
-  → Manager sequences into specs/phases
+  → Manager plans sprints (each spec = one sprint from the backlog)
   → Auto-transitions to spec phase
 
 Spec phase (usually automatic):
@@ -79,7 +79,7 @@ Every new session, detect state and resume:
 
 ```
 Read ~/.config/ratchet/state.yaml
-  → Find all intents and their phases
+  → Find all intents and their sprints
 
 For current workspace's intent:
 
@@ -100,12 +100,12 @@ For current workspace's intent:
        Resuming from checkpoint."
     → Continue execution from checkpoint
 
-  Case D: Phase complete, next phase pending
-    → "[Name] Phase [N] complete!
-       Phase [N+1] is next. Ready to start story phase?"
+  Case D: Sprint complete, next sprint pending
+    → "[Name] Sprint [N] complete!
+       Sprint [N+1] is next. Ready to start story phase?"
 
-  Case E: All phases done
-    → "[Name] is complete. All phases done.
+  Case E: All sprints done
+    → "[Name] is complete. All sprints done.
        Want to review, check coverage, or make modifications?"
 
   If multiple intents exist and not in a specific workspace:
@@ -179,7 +179,7 @@ Two equally valid ways:
 The agent automatically chains:
 1. **Spec generation** — reads PM synthesis + role perspectives, extracts role-tagged constraints, generates Intent Spec
 2. **Spec review** — HTML review page for section-by-section confirmation
-3. **Session boundary** — for phases, suggest new session for execution
+3. **Session boundary** — for multi-sprint projects, suggest new session for each sprint
 
 After spec confirmation:
 4. Environment preparation (install tools, scaffold, discover capabilities)
@@ -207,5 +207,5 @@ After spec confirmation:
 
 - Global: `~/.config/ratchet/` (profile, intent registry, review queue)
 - Per-intent: `.ratchet/{intent-id}/` in workspace (spec, test suite, plan, logs, reports)
-- Story: `.ratchet/story/` (top-level) or `.ratchet/phases/{phase}/story/` (per-phase)
+- Story: `.ratchet/story/` (top-level) or `.ratchet/sprints/{sprint}/story/` (per-sprint)
 - Multiple intents can share the same workspace — each gets its own subdirectory

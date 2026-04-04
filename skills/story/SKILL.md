@@ -18,7 +18,7 @@ Agent: each perspective agent produces requirements from their angle
 Agent: PM agent synthesizes all perspectives, resolves conflicts
 Agent: presents unified view with all perspectives visible
 User:  reviews, gives feedback, confirms
-Agent: Manager agent sequences confirmed requirements into specs/phases
+Agent: Manager agent plans sprints (each spec = one sprint)
 
 === Story phase complete → auto-transition to Spec ===
 ```
@@ -35,7 +35,7 @@ The spec phase then reads the PM synthesis and auto-extracts machine-verifiable 
 
 ## Artifacts
 
-Story phase produces artifacts in `.ratchet/story/` (flat project) or `.ratchet/phases/{phase-id}/story/` (multi-phase):
+Story phase produces artifacts in `.ratchet/story/` (single sprint) or `.ratchet/sprints/{sprint-id}/story/` (multi-sprint):
 
 | Artifact | File | Purpose |
 |----------|------|---------|
@@ -46,26 +46,76 @@ Story phase produces artifacts in `.ratchet/story/` (flat project) or `.ratchet/
 | Scenarios | `scenarios.md` | Comprehensive scenario table with source-role column |
 | Mood + Prototype | `mood.md` + `prototype.html` | Visual direction and clickable skeleton |
 | Decisions | `decisions.md` | Every decision made, classified and tracked |
-| Plan Overview | `plan-overview.md` | Manager's spec sequencing and milestone mapping |
+| Sprint Plan | `sprint-plan.md` | Manager's sprint planning and milestone mapping |
 | Active Roles | `roles.yaml` | Which roles participated in this project |
 
 ---
 
-## Step 1: Analyze Intent
+## Step 1: Analyze Intent + Context
 
 ### 1.1 Load Profile
 Check `~/.config/ratchet/profile.yaml`. If missing, ask 3 quick preference questions and create it.
 
-### 1.2 Domain Research
-For domain-specific projects (personality tests, financial tools, medical apps, educational platforms), research the domain BEFORE generating story artifacts:
+### 1.2 Detect Project Mode
 
-1. Identify what domain knowledge shapes the user experience (scoring methods, best practices, common pitfalls)
-2. Spawn research subagent(s) to gather this knowledge
-3. Use findings to inform perspective agents
+Determine whether this is a **greenfield** (new project) or **existing project** (code already exists):
+
+```
+Check workspace for existing code:
+  - Source files exist? (*.ts, *.py, *.go, etc.)
+  - Package manager files? (package.json, go.mod, Cargo.toml, etc.)
+  - Existing architecture? (directories, configs, deployment files)
+
+Mode A: Greenfield — no existing code
+  → Domain research only
+  → Perspective agents generate from intent + domain knowledge
+
+Mode B: Existing project — code already exists
+  → Codebase analysis FIRST (understand what exists)
+  → Domain research if needed
+  → Perspective agents generate from intent + codebase context + domain knowledge
+```
+
+### 1.3 Codebase Analysis (existing project only)
+
+For existing projects, spawn a **Codebase Analyst** subagent (Explore agent) to understand the current state:
+
+```
+Agent(
+  subagent_type: "Explore",
+  prompt: """
+    Analyze this codebase and produce a concise architecture summary:
+    
+    1. Tech stack: languages, frameworks, libraries, build tools
+    2. Architecture: directory structure, key patterns, layers
+    3. Existing conventions: API style (REST/GraphQL), auth mechanism,
+       testing setup, deployment config, CI/CD
+    4. Dependencies: external services, databases, third-party APIs
+    5. Gaps: missing tests, missing docs, obvious technical debt
+    6. Constraints: what's already committed to and hard to change
+    
+    Be factual. Report what IS, not what should be.
+  """
+)
+```
+
+Save output to `.ratchet/story/codebase-analysis.md`. This becomes input to all perspective agents.
+
+### 1.4 Domain Research
+
+For domain-specific projects, research the domain BEFORE deriving roles:
+
+1. Identify what domain knowledge shapes the requirements
+2. Spawn research subagent(s) with explicit tools:
+   - **WebSearch** for domain best practices, industry standards, competitor analysis
+   - **context7 MCP** for library/framework documentation
+   - **WebFetch** for specific reference materials (specs, standards, regulations)
+3. Save findings to `.ratchet/story/domain-research.md`
 
 **Skip** if the domain is generic (CRUD app, landing page, CLI tool) or agent has sufficient knowledge.
 
-### 1.3 Register Intent
+### 1.5 Register Intent
+
 If this is a new intent (not an update):
 
 ```
@@ -77,82 +127,125 @@ Register in `~/.config/ratchet/state.yaml` with status: `draft`.
 
 ---
 
-## Step 2: Role Selection
+## Step 2: Derive Roles from Intent
 
-### 2.1 Load Role Registry
+Roles are **not picked from a static list** — they are derived from what the intent needs. The role registry (`references/role-registry.yaml`) is a **template library** of common roles, not a checklist to filter.
 
-Read `references/role-registry.yaml` for domain role definitions. Check for project-level overrides in `.ratchet/roles.yaml`.
+### 2.1 Analyze What Expertise Is Needed
 
-### 2.2 Evaluate Conditional Roles
-
-For each role with `priority: conditional`, evaluate whether the project involves that role's concern area:
+From the intent description, domain research, and codebase analysis (if existing project), determine:
 
 ```
-For each conditional role:
-  Read the role's condition field
-  Evaluate against the user's intent description and project type
-  Include if relevant, exclude if not
+What do we need to understand to build this correctly?
+What perspectives would catch blind spots?
+What expertise is required that isn't obvious from the intent?
 ```
 
-### 2.3 Present Role Selection to User
+**Think in terms of expertise gaps, not job titles.** Examples:
 
 ```
-For this project, I'll gather perspectives from:
+Intent: "Build a real-time stock trading dashboard"
+  Expertise needed:
+  → Financial domain (regulations, data feeds, pricing) — not in registry
+  → Low-latency data handling (WebSockets, streaming) — specialized Developer
+  → Regulatory compliance — not in registry
+  → Real-time UX patterns — specialized End User
+  → High availability — DevOps
+  → Financial data security — Security
 
-  ✓ End User (required) — user flows, usability, accessibility
-  ✓ Developer (required) — API design, maintainability, DX
-  ✓ DevOps / SRE (included — project deploys to Vercel) — deployment, monitoring
-  ✓ Security (included — handles user auth) — auth, data protection
-  ✓ QA / Tester (required) — testability, edge cases, scenarios
-  ✓ PM (required) — synthesis and prioritization
-  ✓ Manager (required) — spec sequencing and planning
+Intent: "Add dark mode to existing React app"
+  Expertise needed:
+  → Existing codebase constraints — from codebase analysis
+  → CSS/theming patterns — Developer
+  → Accessibility (contrast ratios) — End User
+  → NO need for: DevOps, Security, domain research
 
-  Skipped:
-  ✗ (none for this project)
-
-Add or remove any roles? You can also define custom roles.
+Intent: "Build a CLI tool for parsing CSV files"
+  Expertise needed:
+  → CLI ergonomics (flags, help text, exit codes) — End User (CLI-focused)
+  → CSV edge cases (encoding, escaping, malformed) — QA
+  → Library API design — Developer
+  → NO need for: DevOps, Security, UI design
 ```
 
-### 2.4 Handle Custom Roles
+### 2.2 Match to Role Templates or Create New Roles
 
-If user adds custom roles:
-- Create entry with name, description, contributes, participates_in
-- Save to `.ratchet/roles.yaml` for this project
+For each expertise need:
+1. Check if a role template in the registry matches → use it as a starting point
+2. If no template matches → create a new role on the fly
+3. Customize the role description to be specific to THIS project
+
+**The registry is a starting point, not a boundary.** If the intent needs a "Compliance Officer" or "Data Engineer" or "Performance Engineer" perspective, create it — don't force-fit into existing templates.
+
+### 2.3 Always Include PM and Manager
+
+PM (synthesis) and Manager (planning) are structural roles — they always participate regardless of intent. They are part of the process, not part of the domain.
+
+### 2.4 Present Derived Roles to User
+
+```
+Based on what we're building, I need these perspectives:
+
+  ✓ End User (CLI-focused) — CLI ergonomics, help text, error messages
+  ✓ Developer — library API design, extensibility, code quality
+  ✓ QA / Tester — CSV edge cases, encoding issues, malformed input
+  ✓ PM — synthesis and prioritization
+  ✓ Manager — spec sequencing
+
+  Not needed for this project:
+  ✗ DevOps — no deployment, single binary distribution
+  ✗ Security — no network, no user data, no auth
+
+  Why these roles: This is a data processing CLI tool. The critical
+  perspectives are input edge cases (QA), developer experience (Developer),
+  and CLI usability (End User). No operational or security concerns.
+
+Add, remove, or adjust any roles?
+```
+
+**Key difference from static approach**: The agent explains WHY each role was chosen (or excluded) based on the intent. The user sees the reasoning, not just a checklist.
 
 ### 2.5 Save Active Roles
 
 Write `.ratchet/story/roles.yaml`:
 
 ```yaml
-domain: software_development
+derived_from: "intent analysis"  # NOT "registry filter"
+project_mode: greenfield | existing
 active_roles:
-  - id: end_user
-    name: "End User"
-    status: active
+  - id: end_user_cli
+    name: "End User (CLI-focused)"
+    description: "CLI ergonomics, help text, error messages, piping behavior"
+    reason: "CLI tool — usability is the primary UX concern"
+    based_on: end_user  # Registry template used as starting point (or "custom")
+    model: sonnet
   - id: developer
     name: "Developer"
-    status: active
-  - id: devops
-    name: "DevOps / SRE"
-    status: active
-    reason: "project deploys to Vercel"
-  - id: security
-    name: "Security"
-    status: active
-    reason: "handles user auth"
+    description: "Library API design, extensibility, code quality"
+    reason: "Tool may be used as a library — API design matters"
+    based_on: developer
+    model: sonnet
   - id: qa_tester
     name: "QA / Tester"
-    status: active
+    description: "CSV edge cases, encoding issues, malformed input handling"
+    reason: "Data parsing is the core function — edge cases are critical"
+    based_on: qa_tester
+    model: sonnet
   - id: pm
     name: "Product Manager"
-    status: active
+    reason: "structural — always present"
+    based_on: pm
+    model: opus
   - id: manager
     name: "Engineering Manager"
-    status: active
+    reason: "structural — always present"
+    based_on: manager
+    model: opus
 excluded_roles:
-  # - id: devops
-  #   reason: "pure frontend, no deployment"
-custom_roles: []
+  - id: devops
+    reason: "No deployment — single binary distribution"
+  - id: security
+    reason: "No network, no user data, no authentication"
 ```
 
 ---
@@ -166,17 +259,34 @@ For each active role (except PM and Manager — they come later), spawn a parall
 ```
 Agent(
   subagent_type: "general-purpose",
-  model: [role's model from registry — typically sonnet],
+  model: [role's model — typically sonnet],
   prompt: """
     You are the {role_name} perspective agent for a software project.
     
     Project intent: {user_intent_description}
+    Project mode: {greenfield | existing}
     Domain context: {domain_research_findings if any}
+    Codebase context: {codebase_analysis if existing project, else "N/A — greenfield"}
     User profile: {profile preferences}
     
+    Your role description: {role_description}
+    Why you were included: {role_reason}
+    
     Your job: analyze this project EXCLUSIVELY from the {role_name} perspective.
-    Produce requirements, concerns, scenarios, and constraints that a 
-    {role_description} would identify.
+    Produce requirements, concerns, scenarios, and constraints that someone
+    with your expertise would identify.
+    
+    IMPORTANT for existing projects:
+    - Read the codebase analysis carefully — your requirements must be
+      compatible with what already exists
+    - Don't suggest replacing established patterns without strong justification
+    - Identify what the existing codebase does well AND what it's missing
+      from your perspective
+    
+    IMPORTANT for greenfield projects:
+    - Use domain research findings to ground your requirements in real-world
+      best practices, not generic advice
+    - Be specific to THIS project, not generic platitudes
     
     Focus on what matters to YOUR perspective. Don't try to cover
     everything — other role agents handle other perspectives.
@@ -187,6 +297,8 @@ Agent(
     
     ## Context
     What this role cares about for this project.
+    [For existing projects: what the current codebase does well/poorly
+     from this perspective]
     
     ## Requirements
     - REQ-1: [requirement] — [rationale]
@@ -421,99 +533,114 @@ Iterate on prototype feedback until user approves.
 
 ---
 
-## Step 6: Complexity Estimation
+## Step 6: Backlog Estimation
 
-After all artifacts are confirmed, estimate complexity:
+After all artifacts are confirmed, the PM synthesis output IS the **product backlog** — a prioritized list of requirements from all perspectives. Now estimate complexity:
 
 ### 6.1 Story Point Estimation
 
 ```yaml
 # .ratchet/story/complexity.yaml
 total_estimate: [N] points
-recommended_split: [1 or N] phases
 rationale: "[why this estimate]"
 ```
 
 ### Story Point Scale
 
 ```
-1-5 points:    Trivial. Single WP, < 30 min agent time.
-5-15 points:   Small. 2-4 WPs, one spec, one session.
-15-30 points:  Medium. 5-10 WPs, one spec, one session.
-30-60 points:  Large. Must split into multiple phases.
-60+ points:    Very large. Must split. Each phase < 30 points.
+1-5 points:    Trivial. Single WP, one sprint.
+5-15 points:   Small. 2-4 WPs, likely one sprint.
+15-30 points:  Medium. 5-10 WPs, one or two sprints.
+30-60 points:  Large. Multiple sprints needed.
+60+ points:    Very large. Multiple sprints, each < 30 points.
 ```
-
-### 6.2 Auto-Split (if > 30 points)
-
-If total > 30 points, proceed to Manager agent for phase splitting (Step 7). Otherwise, skip to Step 8.
 
 ---
 
-## Step 7: Manager Agent — Spec Sequencing
+## Step 7: Sprint Planning (Manager Agent)
+
+The Manager agent **always runs** — even for small projects. Sprint planning is not triggered by a threshold; it's a structural step. The Manager decides how many sprints are needed, not a number.
+
+```
+Agile mapping:
+  Product Backlog  =  PM synthesis output (prioritized requirements)
+  Sprint Planning  =  Manager agent (this step)
+  Sprint           =  Spec (one subset of backlog, executed to completion)
+  Sprint Execution =  Plan → Execute → Verify → Acceptance
+  Sprint Review    =  /ratchet:review
+```
 
 ### 7.1 Spawn Manager Agent
-
-After user confirms the PM synthesis (and for projects > 30 points OR when the Manager determines splitting is beneficial):
 
 ```
 Agent(
   subagent_type: "general-purpose",
   model: opus,
   prompt: """
-    You are the Engineering Manager agent.
+    You are the Engineering Manager agent doing sprint planning.
     
     Project intent: {user_intent_description}
-    Confirmed PM synthesis: {path to synthesis.md}
+    Product backlog (PM synthesis): {path to synthesis.md}
     Complexity estimate: {total_estimate} points
+    Codebase context: {codebase_analysis if existing project}
     
-    Your job: decompose the confirmed requirements into specs and phases.
+    The PM synthesis contains the prioritized product backlog.
+    Your job: decide how to break this backlog into sprints.
     
-    Produce a plan overview with:
+    Each sprint becomes one Spec — a self-contained unit of work
+    that produces a deliverable result.
     
-    1. SPEC DECOMPOSITION
-       Which requirements group into which spec/phase.
-       Why this grouping (technical dependency, user value, risk).
+    SPRINT PLANNING RULES:
+    - Each sprint should be completable in one session (~30 points max)
+    - Each sprint should produce something the user can review/demo
+    - Earlier sprints should deliver higher-priority (Must) requirements first
+    - Dependencies determine ordering — don't schedule work before its prerequisites
+    - It's OK to plan just one sprint if the backlog is small enough
+    
+    Produce a sprint plan:
+    
+    1. SPRINT DECOMPOSITION
+       Which backlog items go into which sprint.
+       Why this grouping (dependency, value, risk).
     
     2. ORDERING
-       Which spec/phase comes first.
-       Dependency graph between specs.
+       Which sprint comes first.
+       Dependency graph between sprints.
     
     3. RISK ASSESSMENT
-       Which specs are highest risk.
+       Which sprints are highest risk.
        What should be prototyped or validated first.
     
     4. MILESTONE MAPPING
-       What's deliverable after each spec/phase.
-       What the user can review/demo after each phase.
+       What's deliverable after each sprint.
+       What the user can review/demo after each sprint.
     
     Output format:
     
-    # Plan Overview
+    # Sprint Plan
     
-    ## Spec Decomposition
+    ## Number of sprints: [N]
+    ## Rationale: [why this number — "backlog fits in one sprint" is valid]
     
-    ### Phase 1: [name] ([N] points)
-    Requirements: [R-01, R-03, R-07, ...]
+    ### Sprint 1: [name] ([N] points)
+    Backlog items: [R-01, R-03, R-07, ...]
     Rationale: [why this grouping]
-    Deliverable: [what user gets after this phase]
+    Deliverable: [what user gets after this sprint]
     Risk: [low/medium/high] — [why]
     
-    ### Phase 2: [name] ([N] points)
-    Requirements: [R-02, R-04, ...]
-    Depends on: [Phase 1]
+    ### Sprint 2: [name] ([N] points)  (if needed)
+    Backlog items: [R-02, R-04, ...]
+    Depends on: [Sprint 1]
     Rationale: [why this grouping]
     Deliverable: [what user gets]
     Risk: [level] — [why]
     
     ## Dependency Graph
-    Phase 1 → Phase 2 → Phase 3
-    Phase 1 → Phase 3 (partial)
+    Sprint 1 → Sprint 2 → Sprint 3
     
     ## Recommended Order
-    1. Phase 1 — [rationale for going first]
-    2. Phase 2 — [rationale]
-    3. Phase 3 — [rationale]
+    1. Sprint 1 — [rationale for going first]
+    2. Sprint 2 — [rationale]
     
     ## Risk Mitigation
     - [risk] → [mitigation strategy]
@@ -521,54 +648,79 @@ Agent(
 )
 ```
 
-### 7.2 Save Plan Overview
+### 7.2 Save Sprint Plan
 
-Save to `.ratchet/story/plan-overview.md`.
+Save to `.ratchet/story/sprint-plan.md`.
 
 ### 7.3 Present to User
 
+**Single sprint:**
 ```
-Manager's plan:
+Sprint plan:
 
-  Phase 1: [name] ([N] pts) — [deliverable summary]
-  Phase 2: [name] ([N] pts) — [deliverable summary]
-  Phase 3: [name] ([N] pts) — [deliverable summary]
+  Sprint 1: [name] ([N] pts) — covers all backlog items
+  
+  This project fits in a single sprint. All [N] requirements
+  will be delivered together.
 
-  Dependencies: Phase 1 → Phase 2 → Phase 3
-  Highest risk: Phase [N] — [reason]
-
-OK with this split? Want to adjust?
+OK to proceed?
 ```
 
-### 7.4 Create Phase Structure
+**Multiple sprints:**
+```
+Sprint plan:
 
-On confirmation, create phase directories:
+  Sprint 1: [name] ([N] pts) — [deliverable summary]
+  Sprint 2: [name] ([N] pts) — [deliverable summary]
+  Sprint 3: [name] ([N] pts) — [deliverable summary]
+
+  Dependencies: Sprint 1 → Sprint 2 → Sprint 3
+  Highest risk: Sprint [N] — [reason]
+
+  Each sprint generates its own Spec and runs in a fresh session.
+
+OK with this plan? Want to adjust?
+```
+
+### 7.4 Create Sprint Structure
+
+**Single sprint** — flat structure, no sprints directory:
 
 ```
 .ratchet/
-├── story/                      # Top-level story (big picture)
-│   ├── perspectives/           # All perspective documents
-│   ├── synthesis.md            # Full PM synthesis
-│   ├── personas.md
-│   ├── journey.md              # Full journey across all phases
-│   ├── scenarios.md            # All scenarios
-│   ├── complexity.yaml         # Estimate + phase split
-│   ├── plan-overview.md        # Manager's sequencing plan
-│   ├── roles.yaml              # Active roles
-│   └── decisions.md
-├── phases/
-│   ├── phase-1/
-│   │   └── story/              # Phase 1 subset
+├── story/                      # Product backlog (story artifacts)
+│   ├── perspectives/
+│   ├── synthesis.md            # = product backlog
+│   ├── sprint-plan.md          # Manager's plan (1 sprint)
+│   ├── ...
+└── {intent-id}/                # Sprint 1 = the only sprint
+    ├── spec.yaml
+    ├── plan.yaml
+    ├── test-suite/
+    └── ...
+```
+
+**Multiple sprints** — each sprint gets its own directory:
+
+```
+.ratchet/
+├── story/                      # Product backlog (full picture)
+│   ├── perspectives/
+│   ├── synthesis.md            # = product backlog
+│   ├── sprint-plan.md          # Manager's sprint plan
+│   ├── complexity.yaml
+│   ├── ...
+├── sprints/
+│   ├── sprint-1/
+│   │   └── story/              # Sprint 1 backlog subset
 │   │       ├── journey.md
 │   │       ├── scenarios.md
 │   │       └── prototype.html
-│   ├── phase-2/
+│   ├── sprint-2/
 │   │   └── story/
 │   │       └── ...
 │   └── ...
 ```
-
-For simple projects (< 30 points), keep flat structure — no phases directory.
 
 ---
 
@@ -578,41 +730,47 @@ For simple projects (< 30 points), keep flat structure — no phases directory.
 
 ```
 Story phase complete. All artifacts confirmed:
-  - [N] roles participated ([role names])
-  - [N] perspective documents generated
-  - PM synthesis: [N] unified requirements, [N] conflicts resolved
-  - [N] personas, [N]-step journey
-  - [N] scenarios ([N] normal, [N] boundary, [N] excluded)
-  - [Visual mood confirmed, prototype approved | N/A for non-UI project]
-  - [N] decisions resolved, [N] agent-decided
-  [- Manager plan: [N] phases | Single-phase project]
 
-Ready to generate the Intent Spec from these artifacts?
+  Product Backlog:
+    - [N] roles contributed perspectives
+    - [N] unified requirements ([N] Must, [N] Should, [N] Could)
+    - [N] conflicts resolved by PM
+    - [N] personas, [N]-step journey
+    - [N] scenarios ([N] normal, [N] boundary, [N] excluded)
+    [- Visual mood confirmed, prototype approved | N/A]
+
+  Sprint Plan:
+    - [N] sprint(s) planned by Manager
+    [- Sprint 1: [name] ([N] pts) — [deliverable]]
+    [- Sprint 2: [name] ([N] pts) — [deliverable]]
+
+Ready to start Sprint 1?
 ```
 
-### 8.2 Transition to Spec
+### 8.2 Transition to Spec (= Start Sprint 1)
 
 On confirmation:
 1. Mark story phase as complete in state
-2. **Auto-invoke the spec skill** — do not wait for user to call `/ratchet:spec`
-3. Spec phase reads `.ratchet/story/synthesis.md` and other artifacts as input
+2. **Auto-invoke the spec skill** for Sprint 1
+3. Spec phase reads sprint backlog items from synthesis.md + sprint-plan.md
 
-### 8.3 Session Boundary (for phases)
+For single-sprint projects, the spec covers the entire backlog.
+For multi-sprint projects, the spec covers Sprint 1's backlog items only.
 
-If the project was split into phases:
-- Generate Phase 1 story artifacts (subset of full story)
-- Transition to Phase 1 spec
-- After Phase 1 spec confirmation, suggest new session for execution:
+### 8.3 Session Boundary (for multi-sprint projects)
+
+Each sprint should start in a fresh session for best quality:
 
 ```
-Phase 1 spec is ready. Starting execution requires a fresh session 
-for best quality.
+Sprint 1 spec is ready. Starting execution requires a fresh session.
 
-All context has been saved to .ratchet/phases/phase-1/
+All context has been saved to .ratchet/sprints/sprint-1/
 
 Please start a new Claude Code session and I'll continue from 
 where we left off.
 ```
+
+After Sprint 1 completes → review → start new session for Sprint 2.
 
 ---
 
@@ -645,18 +803,21 @@ For minor updates (tweaking a scenario, adjusting a persona detail), skip re-run
 
 ## Rules
 
-1. **Perspectives before synthesis.** Always gather role perspectives before producing unified artifacts.
-2. **PM synthesizes, user confirms.** The PM agent does the hard work of reconciliation; the user makes final calls.
-3. **Perspectives visible during confirmation.** The user must see which roles contributed what, not just the merged result.
-4. **Roles are domain-specific.** Use the role registry for the project's domain. Don't invent roles outside the registry without user input.
-5. **Parallel execution.** Perspective agents run in parallel for speed. PM and Manager run sequentially after.
-6. **Human language only.** No YAML, no test methods, no constraint IDs in story artifacts. Those come in spec.
-7. **Out of scope is mandatory.** Every scenario table must have an explicit out-of-scope section.
-8. **Iterate until confirmed.** No time limit. The investment here saves rework later.
-9. **Decisions are classified.** Every decision is either user-confirmed, agent-decided (with rationale), or open.
-10. **Prototype is a skeleton.** Not the final product — direction confirmation only.
-11. **Cascade updates.** Any story change flows through to spec, tests, and execution.
-12. **Domain research first.** For domain-specific projects, research before spawning perspective agents.
-13. **Complexity estimation.** Always estimate story points. Split if > 30 points.
-14. **Manager sequences.** For multi-phase projects, the Manager agent decides spec ordering, not the user or PM.
-15. **Sonnet for perspectives, Opus for synthesis.** Individual role agents run on Sonnet. PM and Manager run on Opus.
+1. **Roles derive from intent.** Don't filter a static list — analyze what expertise the intent needs. The registry is a template library, not a checklist.
+2. **Codebase context for existing projects.** Always run codebase analysis before spawning perspectives. Perspective agents must know what exists.
+3. **Perspectives before synthesis.** Always gather role perspectives before producing unified artifacts.
+4. **PM synthesizes, user confirms.** The PM agent does the hard work of reconciliation; the user makes final calls.
+5. **Perspectives visible during confirmation.** The user must see which roles contributed what, not just the merged result.
+6. **Explain role choices.** When presenting derived roles, explain WHY each was included or excluded based on the intent.
+7. **Parallel execution.** Perspective agents run in parallel for speed. PM and Manager run sequentially after.
+8. **Human language only.** No YAML, no test methods, no constraint IDs in story artifacts. Those come in spec.
+9. **Out of scope is mandatory.** Every scenario table must have an explicit out-of-scope section.
+10. **Iterate until confirmed.** No time limit. The investment here saves rework later.
+11. **Decisions are classified.** Every decision is either user-confirmed, agent-decided (with rationale), or open.
+12. **Prototype is a skeleton.** Not the final product — direction confirmation only.
+13. **Cascade updates.** Any story change flows through to spec, tests, and execution.
+14. **Domain research with real tools.** Use WebSearch, context7, WebFetch — not just LLM knowledge. Ground perspectives in facts.
+15. **Complexity estimation.** Always estimate story points.
+16. **Manager always runs.** Sprint planning is structural, not triggered by a threshold. The Manager decides how many sprints — even if the answer is "one."
+17. **Spec = Sprint.** Each spec executes one sprint's worth of backlog items. Story output is the product backlog; specs are sprints that consume it.
+17. **Sonnet for perspectives, Opus for synthesis.** Individual role agents run on Sonnet. PM and Manager run on Opus.

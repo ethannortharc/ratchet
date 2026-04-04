@@ -278,11 +278,12 @@ Files are the single source of truth. Sessions are disposable. Each phase starts
 
 ```
 ~/.config/ratchet/                        Global: profile, intent registry, review queue
-<project>/.ratchet/story/                 Story artifacts (Phase 1)
+<project>/.ratchet/story/                 Product backlog (story artifacts)
 <project>/.ratchet/story/perspectives/    Per-role perspective documents
-<project>/.ratchet/story/synthesis.md     PM synthesis output
+<project>/.ratchet/story/synthesis.md     PM synthesis = prioritized backlog
+<project>/.ratchet/story/sprint-plan.md   Manager's sprint plan
 <project>/.ratchet/{intent-id}/           Per-intent: spec, plan, tests, proofs, acceptance
-<project>/.ratchet/phases/                Multi-phase projects (> 30 story points)
+<project>/.ratchet/sprints/               Multi-sprint projects
 ```
 
 Ratchet uses Claude Code's subagent system for parallel execution:
