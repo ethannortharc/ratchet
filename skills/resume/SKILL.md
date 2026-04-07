@@ -1,27 +1,12 @@
 ---
 name: resume
-description: Resume a paused intent's execution. Sets status back to "active" so agent can continue. Use when user says "resume", "continue", "unpause", "start again".
+description: Resume paused sprint.
 ---
 
-# Resume — Resume Paused Intent
+# Resume
 
-## Usage
+Check status: `python tools/ratchet.py sprint status {sprint_id}`
 
-```
-/ratchet:resume prism
-/ratchet:resume          # resolves by current workspace
-```
+Resume: `python tools/ratchet.py sprint resume {sprint_id}`
 
-## Workflow
-
-1. Resolve intent ID (argument → workspace → ask)
-2. Read `~/.config/ratchet/state.yaml`
-3. Verify intent is in `paused` state
-4. Set intent status to `active`
-5. Update `last_activity` timestamp
-6. Show brief status: "▶ Resumed intent '[name]'. Current state: [progress summary]"
-7. Suggest next action based on where it left off
-
-## Rules
-- Can only resume from `paused` state
-- If intent is not paused, inform user of current state and suggest appropriate action
+Then continue the execution flow from where it was paused.

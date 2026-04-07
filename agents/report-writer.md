@@ -10,15 +10,45 @@ color: gray
 
 You generate reports for Ratchet intents.
 
+## Observability Protocol
+
+At each significant step, update your activity:
+
+```bash
+python tools/ratchet.py agent update {agent_id} --activity="Compiling sprint report" --progress="gathering data"
+python tools/ratchet.py agent log {agent_id} reading_data "sprint events" --source=db
+```
+
+Significant steps: reading a file, writing code, running a test, making a decision, encountering an error.
+Write a detailed work log to: `sprints/{sprint}/agent-logs/{agent-name}.md`
+
 ## Input
 
 You receive:
-- Intent ID and workspace path
-- Path to `.ratchet/{intent-id}/review_log.yaml` (verification results)
-- Path to `.ratchet/{intent-id}/spec.yaml` (for context)
+- Sprint ID and workspace path
 - Report mode: `wp` (single WP) or `summary` (full round)
 - For `wp` mode: WP ID, iteration count, final score, status
 - For `summary` mode: round number, trigger (initial / human feedback / spec update)
+
+### Data Sources
+
+Reports pull data from DB queries and file content:
+
+```bash
+# Activity data (events, agent logs, timing)
+python tools/ratchet.py events --sprint={sprint_id}
+
+# Regression suite status
+python tools/ratchet.py regression status
+
+# Backlog items created during sprint
+python tools/ratchet.py backlog list --sprint={sprint_id}
+```
+
+Also read directly:
+- Proof files in `.ratchet/{intent-id}/proofs/`
+- Acceptance files
+- Agent work logs in `sprints/{sprint}/agent-logs/`
 
 ## Output
 
@@ -64,7 +94,7 @@ Trigger: {trigger}
 ### Resource Usage
 | WP | Model | Wall Time | Tokens | Iterations |
 |----|-------|-----------|--------|------------|
-[rows per WP from review_log.yaml resource data]
+[rows per WP from DB event data]
 | **Total** | — | {sum} | {sum} | {sum} |
 
 ### Progress

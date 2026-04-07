@@ -1,24 +1,21 @@
 ---
 name: verify
-description: Run three-tier verification with ratchet optimization loop. Executes auto verifiers, runs ai_review, queues human items. Captures raw verification output for proof of work in reports. On failure, automatically retries within budget (ratchet loop) before escalating. Workspace-aware — accepts optional intent ID.
+description: "Three-tier verification for work packages. Executes static checks, unit tests, integration tests, AI review, and QA review. Returns results to execute skill which handles ratchet decisions via Python tools. Agent focuses on creative verification work."
 ---
 
-# Verify — Three-Tier Verification + Ratchet Loop
+# Verify — Three-Tier Verification (v6)
 
-## Prerequisites
-`.ratchet/{intent-id}/spec.yaml` (Intent Spec) must exist. Artifacts to verify must be present.
+## Overview
 
-## Workspace Resolution
+Verify is the creative verification engine. It runs multi-level checks on work packages and returns results. The **execute** skill orchestrates the ratchet loop and records all state via Python tools — verify focuses purely on running checks and producing honest assessments.
 
-1. If intent ID provided → look up workspace in `~/.config/ratchet/state.yaml`
-2. If current directory is inside a registered workspace → use that intent
-3. If ambiguous → ask user to choose
+## Agent Registration
 
-ALL verification commands must run within the resolved workspace directory.
+When spawned as a verifier subagent, the execute skill has already registered this agent:
 
-## Intent State
-
-On starting verification: set intent status to `agent_running` in state.yaml.
+```bash
+python tools/ratchet.py agent register {sprint_id} verifier "Verifier WP-{id}" --model sonnet
+```
 
 ## Auto-Verification Rule
 
@@ -88,9 +85,7 @@ Read `.ratchet/{intent-id}/pre-validation.log` to determine what verification ca
 
 **Key rule: Basic functionality issues must be caught at Level 3, not by human review.** If an encoding error, broken button, or navigation failure reaches the human, the verification system has failed.
 
-If check fails due to missing capability: record as `skipped`, describe the capability needed.
-
-### 2. AI Review Verifiers (agent track — only after all auto levels pass)
+### AI Review Verifiers (agent track — only after all auto levels pass)
 For each `verifier: ai_review` constraint:
 - Load the review prompt from `.ratchet/{intent-id}/test-suite/QD-XX.review.md` if available
 - Otherwise construct from artifact + rubric + project context
@@ -143,145 +138,104 @@ qa_review:
 **Integration with composite score:**
 QA review score is advisory — it does NOT affect the ratchet keep/discard decision. Instead:
 - If `sign_off: false`, add QA concerns to the proof of completion document
-- If `missing_scenarios` is non-empty, append to `suggested_constraints.yaml`
+- If `missing_scenarios` is non-empty, gaps become backlog items:
+  ```bash
+  python tools/ratchet.py backlog add "Missing test for scenario: {description}" --type=test_gap --source=qa_review --sprint={sprint_id}
+  ```
 - QA recommendations appear in the iteration report
 
-### 4. Human Verifiers (human track)
-Do NOT run these inline. Queue them to `~/.config/ratchet/review_queue.yaml`:
-```yaml
-- id: rev-{timestamp}
-  intent_id: {intent-id}
-  project: {name}
-  project_path: {workspace path}
-  wp: {wp-id}
-  constraint_id: {constraint}
-  summary: {one-line description}
-  artifact: {path to artifact}
-  checklist: {path to .ratchet/{intent-id}/test-suite/XX.checklist.md if exists}
-  priority: high | normal  # high if blocking downstream WPs
-  queued_at: {datetime}
+### Human Verifiers (human track)
+
+Do NOT run these inline. The execute skill queues them via Python tools:
+```bash
+python tools/ratchet.py backlog add "Human review: {constraint}" --type=human_review --priority={priority} --sprint={sprint_id} --wp={wp_id}
 ```
 
-## Ratchet Loop
+## Result Format
 
-The ratchet loop (retry on failure, keep improvements, discard regressions) is orchestrated by the **execute** skill. See `skills/execute/SKILL.md` for the full loop logic, including stuck detection and early escalation.
+Verify returns results to the execute skill as a structured report. The execute skill handles all recording via Python tools — verify does NOT write to state files or the DB directly.
 
-This skill (verify) is called BY the execute skill's loop — the verifier subagent runs verification, returns results, and the execute skill makes the keep/discard decision based on composite score.
-
-On completion: the execute skill updates intent status in state.yaml:
-- All agent-track pass → `agent_complete`
-- Human items queued → `human_review`
-
-### Git Ratchet (for projects with .git)
-- Single execution branch: `ratchet/execute`
-- Commit on improvement, reset on no improvement
-- Tag checkpoints: `ratchet/wp-{id}/passed` (all constraints pass) or `ratchet/wp-{id}/best` (budget exhausted, best score)
-- Merge `ratchet/execute` to main when all WPs complete with all agent constraints passing
-
-### Filesystem Ratchet (for non-git projects)
-- `artifacts/staging/` = current attempt
-- `artifacts/current/` = best so far
-- Improved → copy staging to current, old current to history
-- Not improved → clear staging
-
-## Recording Results
-
-Append to `.ratchet/{intent-id}/review_log.yaml`:
+Return format:
 ```yaml
-- timestamp: datetime
-  intent_id: string
-  project: string
-  wp: string
-  constraint_id: string
-  track: agent | human
-  verifier_type: auto | ai_review | human
-  result: pass | fail | revise | skipped
-  score: number
-  iteration: int           # Which ratchet iteration
-  reason: string           # ONLY on fail/revise:
-    # spec_ambiguity | decomposition_error | execution_error | quality_gap
-  detail: string
-  issues: [string]
-  could_be_auto: bool
-  missing_capability: string
-  raw_output: string       # Captured stdout/stderr or review response (for proof of work)
+wp_id: wp-01
+iteration: 3
+levels:
+  level_1:
+    status: pass | fail
+    details: [per-check results]
+    raw_output: [captured stdout/stderr]
+  level_2:
+    status: pass | fail
+    details: [per-test results]
+    raw_output: [captured stdout/stderr]
+  level_3:
+    status: pass | fail | skipped
+    details: [per-check results]
+    raw_output: [captured output]
+    missing_capability: [if skipped]
+  ai_review:
+    status: pass | fail | skipped
+    details: [per-constraint scores]
+  qa_review:
+    status: pass | fail | skipped
+    details: [qa agent output]
+composite_score: 0.85
+recommendation: keep | discard
+issues: [list of specific issues found]
+```
+
+The execute skill then calls:
+```bash
+python tools/ratchet.py ratchet decide {sprint_id} {wp_id} --score={composite_score}
 ```
 
 ## Constraint Discovery
 
-During execution and verification, if you discover issues NOT covered by any Intent Spec constraint:
+During verification, if you discover issues NOT covered by any spec constraint, report them to the execute skill which adds them to backlog:
 
-Append to `.ratchet/{intent-id}/suggested_constraints.yaml`:
-```yaml
-- id: sug-{N}
-  discovered_during: {wp-id}
-  type: invariant | quality_dimension
-  claim: string
-  rationale: string
-  proposed_track: agent | human
-  proposed_verifier: auto | ai_review | human
-  proposed_check: string
-  proposed_test_method: string
-  proposed_tools_required:
-    - id: string
-      install: string
-      agent_can_install: bool
-  urgency: high | normal
-  action_taken: string  # What you did as a temporary fix
+```bash
+python tools/ratchet.py backlog add "Discovered: {issue description}" --type=discovered_constraint --source=verification --sprint={sprint_id} --wp={wp_id}
 ```
-
-These appear in `/ratchet:review` for human approval.
-
-## Rules
-1. **Never block on human-track items.** Queue them and continue.
-2. **Always classify failure reason.** This is non-negotiable for the feedback loop.
-3. **Be genuinely critical in ai_review.** Finding real issues early saves iteration cycles.
-4. **Propose constraints you discover.** Don't silently fix things — capture them for the Intent Spec.
-5. **Capture raw output.** Every verification result must include the actual output for proof of work.
-6. **Stay in workspace.** All operations within the registered workspace path.
-7. **Run all three levels.** Static → Unit → Integration. Don't stop at unit tests. If Level 3 tools are available, USE them.
-8. **Auto-upgrade suggestions.** When queuing a human-track item, check: could this be auto-verified with a tool? If yes, set `could_be_auto: true` and `missing_capability` with the tool name. Suggest the upgrade in `/ratchet:review`.
-9. **Basic functionality = agent responsibility.** Encoding errors, broken buttons, pages not rendering, navigation failures — these are NEVER acceptable as human review items. They must be caught by Level 3 integration tests.
-10. **Short-circuit on auto failure.** If any auto level (1/2/3) fails, do NOT run ai_review. Return the failure immediately so the ratchet loop can retry faster. AI review only runs when all auto verifications pass — evaluating quality on broken code wastes tokens and produces misleading scores.
-11. **Auto-trigger on every change.** Verification is not optional or manual. Any code modification triggers the full chain automatically. This applies during execution, updates, bug fixes — all modification paths.
-12. **Check proof exists.** After WP verification passes, confirm that the proof of completion document exists at `.ratchet/{intent-id}/proofs/wp-{id}.md`. If missing, the WP is not complete.
-13. **QA perspective on final pass.** After all verification passes, run QA perspective review for scenario coverage and test quality assessment. QA review is advisory — it enriches proof of completion but doesn't block the ratchet.
 
 ## Perspective Acceptance Review (Post-Verification)
 
-After ALL work packages in a spec/phase pass verification (status: `agent_complete`), the execute skill triggers a Perspective Acceptance Review. This is NOT part of per-WP verification — it runs once after the full spec is verified.
+After ALL work packages in a sprint pass verification, the execute skill triggers a Perspective Acceptance Review. This is NOT part of per-WP verification — it runs once after the full sprint is verified.
 
 ### Purpose
 Verification checks the **spec** (narrow constraints). Acceptance review checks the **story** (broad perspectives). An API can pass all invariants while the end-user experience is still poor. Acceptance review catches intent gaps that survived formalization.
 
-### When it runs
-```
-All WPs pass → agent_complete → Acceptance Review → PM Summary → Human Review
-```
+### Acceptance Agents
+For each active role from `.ratchet/story/roles.yaml`, the execute skill spawns a parallel acceptance agent (Sonnet):
 
-### Acceptance agents
-For each active role from `.ratchet/story/roles.yaml`, spawn a parallel acceptance agent (Sonnet):
+```bash
+# Execute skill registers each acceptance agent:
+python tools/ratchet.py agent register {sprint_id} acceptance "{role_name} Acceptance" --model sonnet
+```
 
 **Input per agent:**
 - Original perspective document (`.ratchet/story/perspectives/{role}.md`)
 - PM synthesis document (`.ratchet/story/synthesis.md`)
 - Proof of completion documents (`.ratchet/{intent}/proofs/`)
-- Verification results (`.ratchet/{intent}/review_log.yaml`)
 - Access to the actual built output (code, running app if applicable)
 
-**Output per agent:** `.ratchet/{intent}/acceptance/{role}.md`
+**Output per agent:** Acceptance review document for that role's perspective.
+
+Gaps found by acceptance agents become backlog items:
+```bash
+python tools/ratchet.py backlog add "Acceptance gap: {description}" --type=improvement --source=acceptance_review --sprint={sprint_id}
+```
 
 ### PM Acceptance Summary
-After all acceptance agents complete, spawn PM agent (Opus):
-- Reads all acceptance reviews
-- Produces `.ratchet/{intent}/acceptance/summary.md`
-- Verdict: "ready for human review" / "needs another iteration"
+After all acceptance agents complete, the execute skill spawns PM agent (Opus) to produce a summary verdict: "ready for human review" or "needs another iteration."
 
-### If verdict = "needs another iteration"
-- Convert gaps into new constraints (source: `acceptance_review`)
-- Trigger ratchet iteration on affected WPs
-- Re-verify, then re-run acceptance (only affected roles)
+## Rules
 
-### If verdict = "ready for human review"
-- Include acceptance summary in human review queue
-- User sees test results + acceptance results + PM assessment
+1. **Be genuinely critical in ai_review.** Finding real issues early saves iteration cycles.
+2. **Run all three levels.** Static → Unit → Integration. Don't stop at unit tests. If Level 3 tools are available, USE them.
+3. **Basic functionality = agent responsibility.** Encoding errors, broken buttons, pages not rendering, navigation failures — these are NEVER acceptable as human review items. They must be caught by Level 3 integration tests.
+4. **Short-circuit on auto failure.** If any auto level (1/2/3) fails, do NOT run ai_review. Return the failure immediately so the ratchet loop can retry faster.
+5. **Auto-trigger on every change.** Verification is not optional or manual. Any code modification triggers the full chain automatically.
+6. **Capture raw output.** Every verification result must include the actual output for proof of work.
+7. **Never manage state.** Verify returns results. The execute skill handles state, recording, and ratchet decisions via Python tools.
+8. **Propose constraints you discover.** Don't silently fix things — report discovered issues so they become backlog items.
+9. **QA perspective on final pass.** After all verification passes, run QA perspective review for scenario coverage and test quality assessment. QA review is advisory — it enriches proof of completion but doesn't block the ratchet.

@@ -22,6 +22,18 @@ You receive:
 
 ## Execution
 
+### 0. Observability Protocol
+
+At each significant step, update your activity:
+
+```bash
+python tools/ratchet.py agent update {agent_id} --activity="Reading test files" --progress="0/5 tests"
+python tools/ratchet.py agent log {agent_id} reading_file "test-suite/auto/INV-01.test.ts" --file=test-suite/auto/INV-01.test.ts
+```
+
+Significant steps: reading a file, writing code, running a test, making a decision, encountering an error.
+Write a detailed work log to: `sprints/{sprint}/agent-logs/{agent-name}.md`
+
 ### 1. Read context
 
 - Load the WP definition and acceptance criteria
@@ -109,7 +121,7 @@ Only hand off to the verifier when all locally-runnable tests pass. The verifier
 
 ## Rules
 
-1. **Stay in workspace.** All file operations within the registered workspace path. Never `cd` outside.
+1. **Stay in workspace.** All file operations within the registered workspace path. Never `cd` outside. Log all significant activities via Python tools.
 2. **Follow agent_guidance.** It contains project-specific constraints and anti-patterns.
 3. **One WP only.** Don't implement other WPs or modify other WPs' code.
 4. **Tests are the spec.** The tests in `.ratchet/{intent-id}/test-suite/` define what must work. Read them first, write code to make them pass.

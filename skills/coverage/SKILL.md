@@ -1,32 +1,34 @@
 ---
 name: coverage
-description: "Three-layer coverage dashboard: user story coverage, scenario coverage, and test coverage. Cross-references story artifacts, scenario table, test suite, and verification results. Workspace-aware — accepts optional intent ID."
+description: "Multi-layer coverage dashboard using DB queries and file cross-references. Shows story coverage, perspective coverage, scenario coverage, regression coverage, and backlog stats."
 ---
 
-# Coverage — Three-Layer Dashboard
+# Coverage — Multi-Layer Dashboard
 
-## Workspace Resolution
+## Data Sources
 
-1. If intent ID provided → look up workspace in `~/.config/ratchet/state.yaml`
-2. If current directory is inside a registered workspace → use that intent
-3. If ambiguous → ask user to choose
+- Story scenarios: `.ratchet/story/scenarios.md`
+- Perspectives: `.ratchet/story/perspectives/*.md`
+- Regression manifest: `regression/manifest.yaml`
+- DB backlog: `python tools/ratchet.py backlog stats`
+- DB regression: `python tools/ratchet.py regression status`
 
-## Three Layers
+## Layers
 
 ### Layer 1: User Story Coverage
 Which user journey steps are implemented?
 
 Cross-reference:
-- `.ratchet/story/journey.md` (or `.ratchet/sprints/{sprint}/story/journey.md`) → step list
-- Work package status from plan.yaml → which steps are covered by completed WPs
+- `.ratchet/story/journey.md` for step list
+- Work package completion status from DB
 
 ### Layer 1.5: Perspective Coverage
 Which role perspectives are addressed by the implementation?
 
 Cross-reference:
-- `.ratchet/story/perspectives/*.md` → requirements per role
-- `.ratchet/story/synthesis.md` → unified requirements with source_roles
-- Work package completion status → which role requirements are implemented
+- `.ratchet/story/perspectives/*.md` for requirements per role
+- `.ratchet/story/synthesis.md` for unified requirements with source_roles
+- Work package completion status
 
 Display:
 ```
@@ -42,30 +44,38 @@ Perspective Coverage:
 Which scenarios from the scenario table are tested?
 
 Cross-reference:
-- `.ratchet/story/scenarios.md` → scenario list
-- `.ratchet/{intent-id}/test-suite/manifest.yaml` → which scenarios have tests
-- `.ratchet/{intent-id}/review_log.yaml` → test results
+- `.ratchet/story/scenarios.md` for scenario list
+- `regression/manifest.yaml` for which scenarios have regression tests
+- Sprint verification results from DB
 
-### Layer 3: Test Coverage
-Code-level verification coverage.
+### Layer 3: Test / Regression Coverage
+Code-level verification and regression status.
 
-Cross-reference:
-- Test suite results from review_log.yaml
-- Code coverage tool output (if available)
-- AI review scores
-- Human review status
+Run: `python tools/ratchet.py regression status`
+
+Shows:
+- Total regression tests in manifest
+- Tests passing / failing / not yet run
+- Coverage gaps (scenarios without regression tests)
+
+### Backlog Coverage
+
+Run: `python tools/ratchet.py backlog stats`
+
+Shows:
+- Total backlog items by type and status
+- Items blocked vs prioritized vs completed
+- Bug vs improvement vs feature breakdown
 
 ## Display
 
 ```
-Coverage Dashboard — [intent-name]
+Coverage Dashboard
 
 Layer 1: User Story
   [N]/[total] journey steps implemented
-  [visual bar or list showing coverage]
 
 Layer 1.5: Perspectives
-  [role]: [N]/[total] requirements covered
   [role]: [N]/[total] requirements covered
   ...
 
@@ -74,28 +84,23 @@ Layer 2: Scenarios
   Interruption: [N]/[total] tested
   Boundary:     [N]/[total] tested
 
-Layer 3: Tests
-  Auto:      [N]/[total] passing
-  AI Review: [N]/[total] passing (avg score: [X])
-  Human:     [N]/[total] reviewed
+Layer 3: Regression
+  [N]/[total] regression tests passing
+  [N] scenarios without regression coverage
+
+Backlog:
+  [N] total items | [N] bugs | [N] improvements
+  [N] blocked | [N] prioritized | [N] completed
 
 Gaps:
   - [uncovered journey step or scenario]
-  - [missing test for scenario X]
+  - [missing regression test for scenario X]
   - [recommended addition]
 ```
 
-## HTML Report
-
-For projects with many scenarios (>20), generate `.ratchet/{intent-id}/coverage-report.html`:
-- Self-contained HTML with expandable sections
-- Color-coded status (green/yellow/red)
-- Progress bars per layer
-- Open in browser for better readability
-
 ## Rules
 
-1. **No story artifacts = limited view.** If no `.ratchet/story/` exists, show only Layer 3 (test coverage). If no perspectives exist (pre-v5 project), skip Layer 1.5.
+1. **No story artifacts = limited view.** If no `.ratchet/story/` exists, show only Layer 3 and backlog stats. If no perspectives exist, skip Layer 1.5.
 2. **Cross-reference, don't duplicate.** Read existing files, don't create new data.
 3. **Highlight gaps.** The most valuable part is what's MISSING.
 4. **Include out-of-scope.** Show excluded scenarios to confirm they're still intentionally excluded.

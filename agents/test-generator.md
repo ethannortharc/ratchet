@@ -17,6 +17,18 @@ You receive:
 - Workspace absolute path
 - Project type and test runner info
 
+## Observability Protocol
+
+At each significant step, update your activity:
+
+```bash
+python tools/ratchet.py agent update {agent_id} --activity="Generating unit tests" --progress="3/8 constraints"
+python tools/ratchet.py agent log {agent_id} generating_test "INV-01" --file=test-suite/auto/INV-01.test.ts
+```
+
+Significant steps: reading a file, writing code, running a test, making a decision, encountering an error.
+Write a detailed work log to: `sprints/{sprint}/agent-logs/{agent-name}.md`
+
 ## Tasks
 
 ### 1. Read all constraints
@@ -68,6 +80,16 @@ entries:
     file: human/QD-02.checklist.md
     status: generated
 ```
+
+### Scenario Tests (NEW in v6)
+
+In addition to constraint tests in `test-suite/`, generate scenario-based tests in `scenario-tests/`:
+
+For each scenario in `.ratchet/story/scenarios.md` that belongs to this sprint's backlog items:
+- Create `scenario-tests/S-{id}.test.{ext}` — an end-to-end test for the scenario
+- The test should verify the complete user story, not individual constraints
+
+These scenario tests will be registered into the global regression suite after the sprint completes.
 
 ## Rules
 

@@ -1,9 +1,9 @@
 ---
 name: spec
-description: "Convert confirmed story artifacts into machine-verifiable constraints, or generate spec standalone. When story exists, auto-extracts constraints from PM synthesis and role perspectives, plus journey, scenarios, prototype, and decisions. Guides thorough section-by-section review, then auto-chains into environment preparation, test suite generation, pipeline validation, planning, and autonomous execution."
+description: "Convert confirmed backlog items into machine-verifiable constraints. When story exists, auto-extracts constraints from PM synthesis and role perspectives. Spec is auto-generated from confirmed backlog — approval is optional since backlog was already confirmed. Python tools handle all state management."
 ---
 
-# Spec — Intent Formalization + Autonomous Execution Chain
+# Spec — Intent Formalization + Autonomous Execution Chain (v6)
 
 ## Overview
 
@@ -17,13 +17,22 @@ Without story (standalone):
   Intent convergence → generate constraints → thorough review → execute
 ```
 
+## State Management
+
+All state transitions go through Python tools:
+
+```bash
+# At start of spec phase:
+python tools/ratchet.py step start {sprint_id} spec
+```
+
 ---
 
 ## Step 0: Detect Story Artifacts
 
 Check for `.ratchet/story/` (single sprint) or `.ratchet/sprints/{sprint}/story/` (multi-sprint).
 
-**If story exists** → Skip to Step 2 (auto-extraction mode). Story already handled intent convergence, domain research, and workspace registration.
+**If story exists** → Skip to Step 2 (auto-extraction mode). Story already handled intent convergence, domain research, and project initialization.
 
 **If no story** → Run full flow from Step 1.
 
@@ -50,12 +59,11 @@ Ask **only intent-level decisions** — things that fork the entire spec:
 - If intent is clear enough, skip to Step 2 with zero questions
 - Multiple choice preferred, one message with all questions
 
-### 1.4 Register Workspace
+### 1.4 Initialize Project
+
+```bash
+python tools/ratchet.py init "{project_name}" --mode {greenfield|existing}
 ```
-Intent ID? [auto-generated from name, user can override]
-Workspace? [current dir / create new / custom path]
-```
-Register in `~/.config/ratchet/state.yaml` with absolute path. Status: `draft`.
 
 ### 1.5 Domain Research (if needed)
 
@@ -111,10 +119,10 @@ invariants:
   - id: INV-01
     claim: "Rate limiting on all production endpoints"
     source: "synthesis.md R-05, security perspective CONSTRAINT-1"
-    source_roles: [security, devops]  # NEW: which roles identified this
+    source_roles: [security, devops]
 ```
 
-Present extracted constraints to user:
+Since the backlog was already confirmed during story phase, spec extraction is automatic. Present a summary for quick review:
 
 ```
 Auto-extracted from story artifacts:
@@ -128,10 +136,8 @@ Quality Dimensions: [N] dimensions
   QD-01: [from mood: visual consistency with prototype]
   ...
 
-Anything to add, remove, or change?
+Proceeding to environment discovery. Say "wait" to review constraints first.
 ```
-
-This should be a quick confirmation — most alignment was done in story phase.
 
 ### 2.1 Environment Discovery
 Actively probe the environment — don't just read project files:
@@ -228,9 +234,7 @@ Natural language prompt for agent context, constraints, and stuck-recovery. If a
 
 ---
 
-## Step 3: Thorough Review (HTML Review Page)
-
-**No time limit.** This is the highest-ROI human investment.
+## Step 3: Spec Review
 
 **Always generate an HTML review page** — regardless of constraint count.
 
@@ -279,6 +283,8 @@ Spec review page opened in browser. Review each section and either:
 - Or tell me what to change — I'll update the spec and regenerate the review page
 ```
 
+Note: When story exists, approval is optional — the backlog was already confirmed during story phase. The review page is generated for transparency, but execution can proceed automatically if the user prefers.
+
 ### Process Feedback
 - Incrementally patch spec — never regenerate from scratch
 - Show what changed
@@ -286,13 +292,21 @@ Spec review page opened in browser. Review each section and either:
 - Wait for user to approve again
 
 ### Finalize
-On approval: update status to `active`, proceed to autonomous execution.
+
+On approval (or auto-proceed when story-confirmed):
+
+```bash
+python tools/ratchet.py gate check {sprint_id} spec
+python tools/ratchet.py step complete {sprint_id} spec
+```
 
 ---
 
 ## Steps 4-7: Autonomous Execution Chain
 
 **The human is done. Everything below runs without user intervention.**
+
+These steps are now orchestrated by the **execute** skill, which handles all state management via Python tools.
 
 ### Step 4: Environment Preparation + Test Suite (parallel)
 
@@ -320,17 +334,19 @@ Main agent generates plan.yaml:
 - Reference test suite files in acceptance criteria
 - Include workspace path in every WP
 - Set dependency graph and parallel groups
-- Update status to `agent_running`
+
+Then register with Python tools:
+
+```bash
+python tools/ratchet.py step start {sprint_id} planning
+# ... generate plan.yaml ...
+python tools/ratchet.py gate check {sprint_id} planning
+python tools/ratchet.py step complete {sprint_id} planning
+```
 
 ### Step 7: Execute with Ratchet Loop
 
-Invoke the **execute** skill, which orchestrates the full ratchet loop:
-- Per-WP cycle: wp-executor → verifier → keep/discard decision
-- Report generation after each WP
-- Git management (single branch + tagged checkpoints)
-- Status updates and human notification on completion
-
-See `skills/execute/SKILL.md` for the complete orchestration logic.
+Invoke the **execute** skill, which orchestrates the full ratchet loop using Python tools for all state management. See `skills/execute/SKILL.md` for the complete orchestration logic.
 
 ### Session Boundary
 
@@ -368,19 +384,11 @@ changelog:
 
 ---
 
-## Workspace Resolution
-
-1. If intent ID provided → look up in state.yaml
-2. If current directory inside registered workspace → use that intent
-3. If creating new → register (Step 1.4)
-
----
-
 ## Rules
 
 1. **Story first when available.** If story artifacts exist, auto-extract — don't re-ask questions.
 2. **Intent convergence is fast.** 2-3 questions max, "what" not "how". (Standalone mode only.)
-3. **Review is thorough.** No time limit. Grouped confirmation. Discuss as long as needed.
+3. **Review is available but optional with story.** Backlog was confirmed in story phase. Spec review is for transparency, not gating.
 4. **Every constraint gets test_method + tools_required.** No exceptions.
 5. **Delivery direction for UI projects.** Key screens, user journey, mood — not pixels.
 6. **Maximum coverage.** Basic functionality MUST be auto-verifiable.
@@ -389,3 +397,4 @@ changelog:
 9. **Subagents for parallelism.** env-preparer + test-generator in parallel; independent WPs in parallel.
 10. **Classify decisions.** Every decision is human_must_decide, agent_can_decide, or unknown.
 11. **Track story source.** Each constraint notes which story artifact it was extracted from.
+12. **Python tools for state transitions.** Use `python tools/ratchet.py step/gate` for all phase transitions. Never update state files directly.

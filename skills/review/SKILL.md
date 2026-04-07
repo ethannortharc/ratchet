@@ -1,115 +1,83 @@
 ---
 name: review
-description: Process the human-track review queue across all intents. Shows pending items sorted by priority (blocking items first), with intent ID and workspace for each. Handles feedback and converts subjective input into agent-verifiable constraints when possible. Use when the user says "review", "what needs my attention", "any pending items", or after agent notifies of completed work.
+description: Process blocked backlog items needing human decision. Shows items from DB sorted by priority, handles feedback conversion into backlog entries. Use when the user says "review", "what needs my attention", or after agent notifies of completed work.
 ---
 
-# Review — Human-Track Async Queue
+# Review — Human Decision Queue
 
 ## Workflow
 
-### Step 1: Load Queue
-Read `~/.config/ratchet/review_queue.yaml`. If empty, report "No pending reviews."
+### Step 1: Show Blocked Items
 
-### Step 2: Show Queue (sorted by priority)
+Run: `python tools/ratchet.py backlog list --status=blocked`
+
+Display items needing human decision, sorted by priority (blocking items first).
+
+If no blocked items, report "No items need your attention."
+
+### Step 2: Show Acceptance Review Summary
+
+If a sprint has completed acceptance review, show summary:
+
+Read `.ratchet/sprints/{sprint}/acceptance/summary.md`
 
 ```
-📋 Review Queue ([N] items across [M] intents)
+Acceptance Review Summary:
+  | Role | Rating | Key Gap |
+  |------|--------|---------|
+  | [role] | satisfied/concerns/unsatisfied | [gap or "-"] |
 
-🔴 [high] prism / WP description
-   Intent: prism │ Workspace: /Users/coder/projects/prism
-   Constraint: [claim]
-   📎 [artifact path or inline preview]
-   📝 [checklist path if exists]
-
-⚪ [normal] note-cli / WP description
-   Intent: note-cli │ Workspace: /Users/coder/projects/note-cli
-   Constraint: [claim]
-   📎 [artifact path]
-
-🔧 Auto-upgrade opportunities ([N] items)
-   These items are currently human-track but COULD be auto-verified:
-   1. [prism] QD-03: "responsive layout" — install Playwright to auto-verify
-   2. [note-cli] INV-05: "CLI outputs valid JSON" — can be auto-tested with jq
-
-💡 Agent Suggestions ([N] items)
-   1. [prism]: [proposed constraint] — [rationale]
-
-📊 Acceptance Review Summary (if available)
-   Perspective acceptance review validates built output against original story perspectives:
-   
-   | Role | Rating | Key Gap |
-   |------|--------|---------|
-   | [role] | satisfied/concerns/unsatisfied | [gap or "—"] |
-   
-   - [N]/[total] Must requirements delivered
-   - [N]/[total] role perspectives fully satisfied
-   - [N] gaps found (passed spec, failed perspective intent)
-   - PM verdict: [ready / ready with caveats / needs iteration]
-   
-   Full report: .ratchet/{intent}/acceptance/summary.md
+  - [N]/[total] Must requirements delivered
+  - [N]/[total] role perspectives fully satisfied
+  - [N] gaps found
+  - PM verdict: [ready / ready with caveats / needs iteration]
 ```
 
-**Auto-upgrade section**: For any review item where `could_be_auto: true`, show what tool is missing and what it would unlock. If the user approves, install the tool and convert the constraint from human-track to agent-track.
-
-### Step 3: Process Reviews
+### Step 3: Process Items
 
 For each item the user reviews:
 
-**Pass**: Mark constraint as verified, remove from queue. If this unblocks downstream WPs, note it.
+**Confirm unresolved item** — user makes a decision:
+```
+python tools/ratchet.py backlog update {id} --decision="..." --status=prioritized
+```
 
-**Revise**: Ask for specific feedback. Then:
-1. Try to convert feedback into an agent-verifiable constraint
-2. Show the conversion: "You said '[subjective feedback]'. I'll add this constraint: '[objective version]' with test_method: '[how to test it]'. Does this capture it?"
-3. If confirmed: add to Intent Spec (with test_method + tools_required), increment version, regenerate test in `.ratchet/{intent-id}/test-suite/`, trigger new iteration
-4. If not captured well: keep as human-track, add to agent_guidance
+**User gives feedback** — convert to new backlog item:
+```
+python tools/ratchet.py backlog add --type=improvement --source=user_report
+```
 
-**Fail**: Ask what's fundamentally wrong. Determine if it's an Intent Spec issue (need to change direction) or an execution issue (need to try harder in same direction).
+**Pass**: Mark as resolved, note if this unblocks downstream work.
 
-### Step 4: Process Agent Suggestions
+**Revise**: Ask for specific feedback, then run the Feedback Conversion Engine.
 
-For each suggested constraint:
-- Show the suggestion with rationale and proposed test_method
-- Options: Adopt (add to Intent Spec) | Ignore | Modify then adopt
-- Adopted suggestions increment spec version
+### Step 4: Feedback Conversion Engine
 
-### Step 5: Update State
-
-Remove processed items from queue. Update intent state in `~/.config/ratchet/state.yaml`:
-- If all human reviews pass → set status to `done`
-- If feedback triggers new round → set status to `agent_running`
-- Update `current_blocker` field (clear if resolved, set if new blockers)
-
-## The Feedback Conversion Engine
-
-This is the most important part of review. Every piece of human feedback is an opportunity to shrink the human track.
-
-**Load conversion patterns from `references/feedback-patterns.md`** — this file contains domain-specific pattern tables (software, creative writing, research, design) mapping common feedback phrases to concrete constraints with verifier type and test method.
+Every piece of human feedback is an opportunity to create actionable backlog items.
 
 **Process:**
-1. Match feedback against domain-specific patterns in `references/feedback-patterns.md`
-2. If a pattern matches → use suggested constraint, verifier, and test_method
-3. If no pattern matches → use the Conversion Strategy (also in the reference file) to attempt freeform conversion
-4. If conversion fails → add specific direction to `agent_guidance`, keep as human-track
-5. Show conversion to user before applying — they must confirm the objective version captures their intent
+1. Match feedback against domain-specific patterns
+2. Try to convert subjective feedback into concrete, verifiable backlog items
+3. Show conversion to user: "You said '[feedback]'. I'll create this backlog item: '[objective version]'. Does this capture it?"
+4. If confirmed: `python tools/ratchet.py backlog add --type=improvement --source=user_report`
+5. If not captured well: refine and try again, or add as-is with notes
 
-Not everything can be converted. The reference file documents common unconvertible feedback and how to handle it gracefully.
+Not everything converts cleanly. Subjective items are still valid backlog entries — they just get human-track verification.
 
 ## Direct Feedback (outside /ratchet:review)
 
-Users don't need to use this command to give feedback. When a user reports an issue directly in conversation (e.g., "the results page has encoding errors"), the agent should:
+When a user reports an issue directly in conversation:
 
 1. Run the feedback conversion engine immediately
-2. Determine if this is a basic functionality issue (should have been auto-caught) or a subjective quality issue
-3. For basic functionality: fix immediately + add as auto-verifiable constraint + add integration test
-4. For quality issues: convert to constraint if possible, update Intent Spec, trigger new iteration
-
-This is equivalent to processing a review inline — same engine, just without the formal queue.
+2. Determine if this is a bug or improvement
+3. For bugs: `python tools/ratchet.py backlog add --type=bug --source=user_report`
+4. For improvements: `python tools/ratchet.py backlog add --type=improvement --source=user_report`
+5. Items enter the backlog and get picked up in the next sprint
 
 ## Rules
+
 1. **Always attempt feedback conversion.** Even partial conversion is valuable.
 2. **Show conversion before applying.** Human must confirm the objective version captures their intent.
 3. **High-priority items first.** They're blocking agent work.
-4. **Don't overwhelm.** If >10 items in queue, show top 5 and ask if user wants to see rest.
-5. **Show intent ID and workspace** for every review item.
-6. **Surface auto-upgrade opportunities.** Every `could_be_auto` item should come with a tool recommendation.
-7. **Basic functionality bugs = agent failure.** If a human finds a broken button or encoding error, acknowledge this should have been caught automatically, fix it, and add an integration test to prevent recurrence.
+4. **Don't overwhelm.** If >10 items, show top 5 and ask if user wants to see rest.
+5. **Basic functionality bugs = agent failure.** Acknowledge this should have been caught, create a bug backlog item with high priority.

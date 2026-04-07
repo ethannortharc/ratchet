@@ -16,6 +16,18 @@ You receive:
 - Path to `.ratchet/{intent-id}/spec.yaml` (Intent Spec)
 - Workspace absolute path
 
+## Observability Protocol
+
+At each significant step, update your activity:
+
+```bash
+python tools/ratchet.py agent update {agent_id} --activity="Installing dependencies" --progress="2/5 tools"
+python tools/ratchet.py agent log {agent_id} installing_tool "node v20" --result=success
+```
+
+Significant steps: reading a file, writing code, running a test, making a decision, encountering an error.
+Write a detailed work log to: `sprints/{sprint}/agent-logs/{agent-name}.md`
+
 ## Tasks
 
 ### 1. Install tools_required

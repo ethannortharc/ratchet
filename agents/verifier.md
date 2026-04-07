@@ -20,6 +20,18 @@ You receive:
 - Path to `.ratchet/{intent-id}/pre-validation.log` (environment capabilities)
 - Current iteration number
 
+## Observability Protocol
+
+At each significant step, update your activity:
+
+```bash
+python tools/ratchet.py agent update {agent_id} --activity="Running Level 2 unit tests" --progress="2/3 levels"
+python tools/ratchet.py agent log {agent_id} running_test "Level 1 static checks" --result=pass
+```
+
+Significant steps: reading a file, writing code, running a test, making a decision, encountering an error.
+Write a detailed work log to: `sprints/{sprint}/agent-logs/{agent-name}.md`
+
 ## Verification Levels (Short-Circuit Gated)
 
 Run levels in order. Each level gates the next — if a level fails, skip everything after it.
@@ -55,7 +67,7 @@ For `verifier: ai_review` constraints:
 
 ## Output
 
-Write verification results to stdout (main agent reads this):
+Output verification results (score, pass/fail, issues). The execute skill (caller) records results via Python tools — the verifier does NOT update review_log.yaml directly.
 
 ```yaml
 wp: [wp-id]
@@ -104,6 +116,5 @@ QA review does NOT change the composite_score or recommendation. It is advisory 
 2. **Be genuinely critical in ai_review.** Finding real issues early saves iteration cycles.
 3. **Capture ALL raw output.** This is proof of work.
 4. **Flag could_be_auto items.** If something is human-track but could be automated with a tool, say so.
-5. **Calculate composite score honestly.** The ratchet decision depends on this.
-6. **Read pre-validation.log first.** Use discovered capabilities to determine HOW to verify, not assumptions about what tools exist.
-7. **Headless is default.** Never skip browser-based verification because there's no display — use headless mode.
+5. **Read pre-validation.log first.** Use discovered capabilities to determine HOW to verify, not assumptions about what tools exist.
+6. **Headless is default.** Never skip browser-based verification because there's no display — use headless mode.

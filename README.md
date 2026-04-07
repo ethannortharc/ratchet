@@ -52,6 +52,8 @@ Through real usage, we discovered two fundamental problems:
 
 **2. Single perspective = blind spots.** A feature looks completely different to an end-user, a developer, DevOps, security, and QA. When we build from one perspective, we ship gaps that no amount of testing catches — because the tests were written from the same narrow perspective.
 
+**3. LLMs can't manage process consistently.** The more complex the workflow, the more steps get skipped. State management, gate checks, and sequencing require deterministic code. We split: Python for process, LLMs for creativity.
+
 Ratchet separates understanding from verification, and gathers multiple stakeholder perspectives before specification:
 
 ```
@@ -94,55 +96,29 @@ These are hypotheses, not proven principles. We're testing them through actual u
 ```
 You: /ratchet:story "Build a REST API for task management"
 
-    [Phase 1: Story — Multi-Perspective Alignment]
+    [Story — Perspective Analysis]
+    Role derivation → Parallel perspective agents → PM synthesis
+    You confirm the backlog (one-time) → Manager plans sprints
+
+    === You can walk away now ===
+
+    [Sprint 1 — Fully Autonomous]
+    Python tools manage state, gates, DB
+    Spec auto-generated → Execute → Verify → Regression → Acceptance
+    Unresolvable items → new backlog entries (don't block!)
+    Sprint complete → notify you
+
+    [Meanwhile, you can:]
+    Report bugs → backlog items
+    Add features → mini-story → backlog items  
+    Check progress → /ratchet:status
     
-    Role selection: End-user, Developer, DevOps, Security, QA
-    (based on domain + project — you confirm or adjust)
-    
-    Parallel perspective agents (each inhabits a role):
-      End-user: "I call the API, I get data, error messages are clear"
-      Developer: "API is RESTful, well-documented, easy to extend"
-      DevOps:    "Deployable, monitorable, graceful rollback"
-      Security:  "JWT auth, rate limiting, input validation"
-      QA:        "Deterministic tests, edge cases defined"
-    
-    PM synthesis: reconciles all perspectives, resolves conflicts
-      "Developer wants API versioning, DevOps concerned about
-       deploy complexity → PM: URL prefix /v1/, low overhead"
-    
-    You see ALL perspectives, review PM's resolutions
-    Answer open questions, iterate until confirmed
-    
-    Manager sequences into specs/phases (for large projects)
+    [Sprint 2 — Auto-starts if must items remain]
+    Picks up new backlog items + unresolved from Sprint 1
+    Same autonomous cycle
 
-    [Phase 2: Spec — Auto-extracted from PM synthesis]
-    [Constraints tagged with source roles]
-    [Environment negotiation — max auto-coverage]
-    [HTML review page — confirm, approve]
-
-You: "Looks good, go."
-
-    === You walk away ===
-
-    [Environment prepared, test suite generated]
-    [Work packages executed with ratchet loop]
-    [Proof of completion per WP]
-    [Verification: build → unit → integration → AI review → QA review]
-
-    [Acceptance Review — role agents review built output]
-      End-user: "✓ flows work, △ error messages could be better"
-      Developer: "✓ API is clean, ✗ pagination not implemented"
-      PM summary: "Ready with caveats — 1 gap to address"
-
-    === Agent notifies: "Ready for review" ===
-
-You: /ratchet:review
-
-    [See results with proof of work + acceptance review]
-    [Coverage dashboard: /ratchet:coverage]
-    [Feedback → converted to constraints → another round]
-
-    === Done ===
+You: /ratchet:review (when you feel like it)
+    Review results → feedback → new backlog items → next sprint
 ```
 
 ### The Ratchet Loop
@@ -277,13 +253,10 @@ Files are the single source of truth. Sessions are disposable. Each phase starts
 ## Architecture
 
 ```
-~/.config/ratchet/                        Global: profile, intent registry, review queue
-<project>/.ratchet/story/                 Product backlog (story artifacts)
-<project>/.ratchet/story/perspectives/    Per-role perspective documents
-<project>/.ratchet/story/synthesis.md     PM synthesis = prioritized backlog
-<project>/.ratchet/story/sprint-plan.md   Manager's sprint plan
-<project>/.ratchet/{intent-id}/           Per-intent: spec, plan, tests, proofs, acceptance
-<project>/.ratchet/sprints/               Multi-sprint projects
+.ratchet/ratchet.db                       SQLite (state, tracking, coordination)
+<project>/.ratchet/story/                 Product backlog artifacts (continuous)
+<project>/.ratchet/sprints/sprint-N/      Per-sprint: spec, tests, proofs, acceptance
+<project>/.ratchet/regression/            Global regression suite (only grows)
 ```
 
 Ratchet uses Claude Code's subagent system for parallel execution:
@@ -308,6 +281,8 @@ Ratchet uses Claude Code's subagent system for parallel execution:
 | **Model selection per subagent** | Perspective agents on Sonnet, PM/Manager on Opus, report-writer on Haiku |
 | **Background agents** (run_in_background) | Perspective agents and independent WPs execute in parallel |
 | **Skill system** | Internal workflow chaining (story → spec → execute → verify → acceptance) |
+| **Python tools** (tools/ratchet.py) | Deterministic process management: state, gates, DB, ratchet decisions, regression |
+| **SQLite** (ratchet.db) | Multi-session coordination, agent DAG tracking, backlog management |
 
 See [DESIGN.md](DESIGN.md) for the complete architecture, schemas, and design decisions.
 
@@ -357,11 +332,12 @@ The agent routes to the matching intent and cascades: story update → spec re-d
 
 - **Autonomy ratio varies widely by project type.** Software with good test coverage achieves high automation. Creative projects need more human judgment.
 - **AI review as a verification tier has noise.** Using AI to judge AI works for structural checks but is unreliable for subjective quality.
-- **Spec quality is everything.** Multi-perspective story phase helps, but the system is only as good as the perspectives gathered and the PM's synthesis quality.
+- **Process consistency requires Python tools.** The Python CLI handles state management, gate checks, and ratchet decisions. Without it, SKILL.md instructions alone cannot guarantee consistency.
 - **Role agents add upfront cost.** 5 parallel perspective agents + PM synthesis takes time. The trade-off is catching blind spots early rather than discovering them in review.
 - **Acceptance review is AI judging AI.** Role agents reviewing built output is better than no review, but not as reliable as human acceptance testing.
 - **Session management is manual.** The agent suggests when to start a new session, but the user has to actually do it.
 - **Only software development roles so far.** The role registry supports one domain. Multi-domain support (data science, design, research) is future work.
+- **SQLite dependency.** Python 3 with sqlite3 module required (included in standard library).
 
 ## Philosophy
 

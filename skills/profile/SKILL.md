@@ -6,19 +6,20 @@ description: Set up or update personal preferences applied across all Ratchet pr
 # Profile — Personal Preferences
 
 ## Storage
-`~/.config/ratchet/profile.yaml`
+
+Profile preferences are stored in `~/.config/ratchet/profile.yaml` and applied during story and execution phases. This is file-based, not DB-managed — profiles are personal configuration, not project state.
 
 ## First-Time Setup (keep under 3 minutes)
 
 Ask only what's relevant based on user context:
 
-1. **Domains**: "What kinds of projects do you typically do?" → software / writing / research
-2. **Technical**: "Primary languages/tools?" → populates defaults
-3. **Intervention level**: "How much involvement during execution?" → minimal / moderate / active
-4. **Quality vs speed**: "Fast with rough edges, or slower but polished?" → adjusts thresholds
-5. **Risk tolerance**: "OK if agent guesses wrong and redoes, or always ask first?" → adjusts auto-proceed
+1. **Domains**: "What kinds of projects do you typically do?" -> software / writing / research
+2. **Technical**: "Primary languages/tools?" -> populates defaults
+3. **Intervention level**: "How much involvement during execution?" -> minimal / moderate / active
+4. **Quality vs speed**: "Fast with rough edges, or slower but polished?" -> adjusts thresholds
+5. **Risk tolerance**: "OK if agent guesses wrong and redoes, or always ask first?" -> adjusts auto-proceed
 
-Domain-specific questions only if relevant (see DESIGN.md for full schema).
+Domain-specific questions only if relevant.
 
 ## Schema
 
@@ -46,7 +47,9 @@ profile:
 ```
 
 ## How Profile Is Used
-- `/ratchet:spec` applies profile as defaults (overridable per project)
+
+- `/ratchet:story` and `/ratchet:spec` apply profile as defaults (overridable per project)
 - Ratchet budgets adjust based on quality_speed preference
 - Human checkpoint frequency adjusts based on intervention level
 - Agent auto-proceeds on assumptions based on risk_tolerance
+- During execution, profile preferences influence WP configuration and verification thresholds

@@ -14,11 +14,13 @@ The name comes from the core mechanism: like a ratchet wrench, progress only mov
 > What truly cannot be automated, human reviews.
 > Each review makes the next project more autonomous.
 
-1. **Understanding first, then verification first.** Align human understanding through narrative (story) before converting to machine-verifiable constraints (spec). Verification capability determines autonomy.
+1. **Code manages process, LLMs do creative work.** Python tools handle state, gates, sequencing, DB operations — all deterministic. Claude Code agents handle perspectives, synthesis, code writing, review — all creative. SKILL.md files are lightweight recipes that alternate between Python calls and agent spawns.
 
 1.5. **Multi-perspective alignment.** Features serve multiple stakeholders. Story phase gathers perspectives from relevant roles (end-user, developer, DevOps, security, QA), synthesizes via PM agent, and confirms with the user — all perspectives visible. Right roles participate in right phases.
 
 1.6. **Story is the backlog. Spec is a sprint.** Story phase produces the product backlog (all requirements, prioritized). The Manager agent always runs sprint planning — deciding how many sprints and what goes in each. Each spec executes one sprint. This maps directly to agile: backlog → sprint planning → sprint → review.
+
+1.7. **Living Backlog.** The backlog is not a one-time artifact — it grows continuously. New requirements, bugs, unresolved decisions, acceptance gaps, and QA recommendations all flow into the backlog. Sprints consume from the backlog. Nothing blocks execution; unresolvable items become new backlog entries.
 
 2. **Two touchpoints.** Human interacts at two points: story/spec (provide direction) and review (evaluate results). Everything between runs autonomously.
 
@@ -45,75 +47,39 @@ User: "I want to build X"
   │
   ▼
 ┌─────────────────────────────────────────────────────┐
-│ Story (human + agent — Product backlog)              │
-│   Role selection (domain-specific)                   │
-│   Parallel perspective agents (sonnet)               │
-│   PM synthesis (opus) — unified requirements         │
-│   Multi-perspective user confirmation                │
-│   Sprint planning (Manager, always)                  │
-│   Backlog estimation + sprint planning (Manager, always)│
-│   Status: draft                                      │
+│ Story (continuous — can run anytime)                 │
+│   Full Story / Mini Story / Direct Entry             │
+│   Perspectives → PM Synthesis → Backlog items        │
+│   python tools/ratchet.py backlog add ...            │
 └──────────────────────┬──────────────────────────────┘
                        │
                        ▼
 ┌─────────────────────────────────────────────────────┐
-│ Spec (mostly automatic when story exists, Phase 2)  │
-│   Auto-extract constraints from story artifacts     │
-│   Environment negotiation (WAIT for user on tools)  │
-│   Decision classification                            │
-│   Interface mockup (iterate until approved)          │
-│   Thorough section-by-section review (HTML page)    │
-│   Status: draft → active                             │
+│ Backlog (living, in ratchet.db)                      │
+│   Features, bugs, improvements, unresolved items     │
+│   Continuously fed by both human and agent tracks    │
 └──────────────────────┬──────────────────────────────┘
                        │
-          === Human walks away ===
+          Manager agent pulls must items
                        │
                        ▼
 ┌─────────────────────────────────────────────────────┐
-│ Preparation (autonomous, parallel subagents)        │
-│   env-preparer: install tools, scaffold, validate   │
-│   test-generator: create test suite from test_method│
-│   Main agent: EVA pipeline validation               │
-└──────────────────────┬──────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────┐
-│ Plan (autonomous)                                   │
-│   Decompose into work packages                     │
-│   Reference pre-generated test suite               │
-│   Status: agent_running                             │
-└──────────────────────┬──────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────┐
-│ Execute (autonomous, execute skill orchestrates)    │
+│ Sprint (autonomous, one per session)                 │
+│   python tools/ratchet.py manages all state          │
 │                                                     │
-│   Per WP: wp-executor → verifier → ratchet decision│
-│     improved? → git commit (keep)                  │
-│     not improved? → git reset (discard)            │
-│     repeat until pass or budget exhausted          │
-│   Proof of Completion per WP                        │
-│   report-writer: iteration report with proof of work│
-│   Status: → agent_complete                          │
+│   Spec (auto) → Prep → EVA → Plan → Execute        │
+│   Per WP: executor → verifier → ratchet decide      │
+│   Regression after each WP                          │
+│   Acceptance Review → gaps → backlog                │
+│   Finalize → merge → notify human                   │
 └──────────────────────┬──────────────────────────────┘
                        │
                        ▼
 ┌─────────────────────────────────────────────────────┐
-│ Acceptance Review (once per sprint)                  │
-│   Re-spawn role agents against actual built output  │
-│   PM acceptance summary + verdict                   │
-│   Gaps → new constraints → ratchet retry if needed  │
-└──────────────────────┬──────────────────────────────┘
-                       │
-          === Agent notifies human ===
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────┐
-│ Review (human + agent)                              │
-│   /ratchet:review or direct conversation            │
-│   Feedback → constraint conversion → new round      │
-│   Coverage dashboard available                       │
-│   Status: → done or → agent_running (new round)     │
+│ Review (human, non-blocking)                         │
+│   Feedback → new backlog items                       │
+│   Confirm unresolved decisions → re-prioritize       │
+│   Must items remain? → next Sprint auto-starts       │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -180,7 +146,7 @@ A WP is not "complete" without its proof document.
 
 ### Workspace Management
 
-Each intent registered in `~/.config/ratchet/state.yaml` with:
+Each intent registered in `ratchet.db` with:
 - Unique ID, absolute workspace path (locked at creation)
 - Lifecycle state, ticket metadata (priority, tags, brief, current_blocker)
 
@@ -188,31 +154,18 @@ All operations stay within workspace. Commands accept optional intent ID.
 
 ### Session Management
 
-**Files are the single source of truth. Sessions are disposable.**
+**ratchet.db is the single source of truth. Sessions are disposable.**
 
-Everything that matters is persisted to `.ratchet/` files. Any session can pick up from where any previous session left off.
+Multiple Claude Code sessions coordinate through the DB:
+- Human session (interactive) + Sprint session (autonomous) can run concurrently
+- Sprint execution acquires a DB lock — one sprint per session
+- Crash recovery via stale lock detection and force-unlock
+- Any session reads DB to know current state and resume
 
 **Session transitions:**
-- Sprint complete → save all results → suggest new session for next sprint
-- Context getting full → save execution-state.yaml checkpoint → suggest new session
-- Story discussion > 30 min → suggest fresh start (all artifacts saved)
-- User explicitly asks → save checkpoint → user starts new session
-
-**Execution checkpoint (.ratchet/execution-state.yaml):**
-```yaml
-intent: string
-sprint: string          # if multi-sprint
-checkpoint_at: datetime
-work_packages:
-  wp-01: done
-  wp-02: running        # iteration N of budget
-  wp-03: pending
-current_wp:
-  id: string
-  iteration: int
-  best_score: float
-  last_failure: string
-```
+- Sprint complete → check backlog for must items → auto-start next sprint or notify human
+- Context filling up → DB has checkpoints → suggest new session
+- Session crash → DB lock goes stale → next session detects and offers recovery
 
 ### Intent Lifecycle
 
@@ -230,14 +183,16 @@ any → paused │ paused → active │ any → archived
 |-------|-------|---------|
 | perspective-{role} | sonnet | Role-specific requirements gathering (parallel) |
 | pm-synthesis | opus | Synthesize perspectives, resolve conflicts |
-| manager | opus | Sprint planning, spec sequencing |
+| manager | opus | Sprint planning |
 | env-preparer | sonnet | Install tools, scaffold, validate environment |
-| test-generator | sonnet | Generate test suite from test_method fields |
+| test-generator | sonnet | Constraint tests + scenario tests from test_method |
 | wp-executor | sonnet | Execute single WP within workspace |
-| verifier | sonnet | 3-level verification + ai_review + QA perspective, composite score |
-| report-writer | haiku | Generate iteration reports from logs |
+| verifier | sonnet | 3-level verification + AI review + QA perspective |
+| acceptance-{role} | sonnet | Post-sprint perspective validation |
+| pm-acceptance | opus | Acceptance summary + verdict |
+| report-writer | haiku | Generate iteration reports from DB + files |
 
-Orchestration: env-preparer + test-generator run in parallel. Independent WPs run in parallel via multiple wp-executor instances.
+Process management (state, gates, ratchet decisions, regression triggers, agent tracking) is handled by Python tools (`tools/ratchet.py`), not by agents.
 
 ### Multi-Level Verification
 
@@ -338,102 +293,46 @@ ratchet/
 ```
 ~/.config/ratchet/
 ├── profile.yaml
-├── state.yaml                    # Global intent registry (with sprint tracking)
-├── review_queue.yaml
 └── global_metrics.yaml
 ```
 
-### Per-Intent Workspace (single-sprint project)
+### Project Workspace
 ```
 <workspace>/.ratchet/
-├── story/                        # Story artifacts (Phase 1)
-│   ├── codebase-analysis.md      # Existing project analysis (if not greenfield)
-│   ├── domain-research.md        # Domain research findings (if domain-specific)
-│   ├── perspectives/             # Per-role perspective documents (derived from intent)
-│   │   ├── end-user.md
-│   │   ├── developer.md
-│   │   └── [intent-derived-roles].md
-│   ├── synthesis.md              # PM synthesis output
-│   ├── personas.md               # Unified personas (role-tagged)
-│   ├── journey.md                # Unified journey (cross-cutting annotations)
-│   ├── scenarios.md              # Comprehensive scenarios (source-role column)
+├── ratchet.db                        # SQLite (state, tracking, coordination)
+├── project.yaml                      # Project metadata (lightweight)
+├── story/                            # Product backlog artifacts (continuous)
+│   ├── codebase-analysis.md
+│   ├── domain-research.md
+│   ├── roles.yaml
+│   ├── perspectives/
+│   ├── synthesis/
+│   ├── personas.md
+│   ├── journey.md
+│   ├── scenarios.md
+│   ├── decisions.md
 │   ├── mood.md
 │   ├── prototype.html
-│   ├── decisions.md
-│   ├── sprint-plan.md            # Manager's sprint planning
-│   ├── roles.yaml                # Derived roles for this project (not a registry filter)
-│   └── complexity.yaml
-└── {intent-id}/                  # Each intent gets its own subdirectory
-    ├── spec.yaml
-    ├── plan.yaml
-    ├── test-suite/
-    │   ├── manifest.yaml
-    │   ├── auto/
-    │   ├── ai-review/
-    │   └── human/
-    ├── proofs/                   # Proof of completion per WP
-    │   └── wp-{id}.md
-    ├── acceptance/               # Perspective acceptance reviews
-    │   ├── end-user.md
-    │   ├── developer.md
-    │   ├── devops.md
-    │   └── summary.md            # PM acceptance summary
-    ├── pre-validation.log
-    ├── review_log.yaml
-    ├── metrics.yaml
-    ├── suggested_constraints.yaml
-    ├── reports/
-    │   ├── wp-{id}.md
-    │   └── iter-{NNN}.md
-    ├── execution-state.yaml      # Execution checkpoint
-    └── artifacts/
+│   ├── complexity.yaml
+│   └── sprint-plan.md
+├── sprints/                          # ALL sprints (always, even single)
+│   └── sprint-N/
+│       ├── backlog-items.yaml
+│       ├── spec.yaml
+│       ├── plan.yaml
+│       ├── pre-validation.log
+│       ├── test-suite/
+│       ├── scenario-tests/
+│       ├── proofs/
+│       ├── acceptance/
+│       ├── agent-logs/
+│       ├── reports/
+│       └── metrics.yaml
+├── regression/                       # Global regression suite (only grows)
+│   ├── manifest.yaml
+│   └── S-{id}.test.*
+└── tools/ → {plugin}/tools/          # Python tools (symlinked from plugin)
 ```
-
-### Per-Intent Workspace (multi-sprint project)
-```
-<workspace>/.ratchet/
-├── story/                        # Top-level story (big picture)
-│   ├── codebase-analysis.md      # Existing project analysis (if not greenfield)
-│   ├── domain-research.md        # Domain research findings (if domain-specific)
-│   ├── perspectives/             # Per-role perspective documents (derived from intent)
-│   │   └── [intent-derived-roles].md
-│   ├── synthesis.md              # PM synthesis output
-│   ├── personas.md               # Unified personas (role-tagged)
-│   ├── journey.md                # Full journey across all sprints (cross-cutting annotations)
-│   ├── scenarios.md              # Comprehensive scenarios (source-role column)
-│   ├── complexity.yaml           # Estimate + sprint split
-│   ├── decisions.md
-│   ├── sprint-plan.md            # Manager's sprint planning
-│   └── roles.yaml                # Active roles for this project
-├── sprints/
-│   ├── sprint-1/
-│   │   ├── story/                # Sprint 1 specific details
-│   │   │   ├── journey.md
-│   │   │   ├── scenarios.md
-│   │   │   └── prototype.html
-│   │   ├── spec.yaml
-│   │   ├── plan.yaml
-│   │   ├── test-suite/
-│   │   ├── proofs/
-│   │   ├── acceptance/               # Perspective acceptance reviews
-│   │   │   ├── end-user.md
-│   │   │   ├── developer.md
-│   │   │   ├── devops.md
-│   │   │   └── summary.md            # PM acceptance summary
-│   │   └── reports/
-│   ├── sprint-2/
-│   │   ├── story/
-│   │   ├── spec.yaml
-│   │   ├── inputs.yaml           # "Assumes Sprint 1 delivered X"
-│   │   └── ...
-│   └── sprint-3/
-│       └── ...
-├── execution-state.yaml          # Current execution checkpoint
-├── review_log.yaml
-└── coverage.yaml                 # Cross-sprint coverage data
-```
-
-Multiple intents can share the same workspace directory. Each intent's artifacts are isolated in its own subdirectory.
 
 ## Commands
 
@@ -508,12 +407,20 @@ Story point estimation helps the Manager agent make informed sprint planning dec
 ### Why direct feedback?
 Requiring `/ratchet:review` for every piece of feedback adds ceremony without value. When the user sees an issue, they should just say it.
 
+### Why Python tools for process management?
+LLMs are probabilistic — they skip steps, forget state updates, and misjudge gates. Process consistency requires deterministic code. Python tools handle everything that must be 100% reliable (state, gates, ratchet decisions, regression triggers). LLMs handle everything that benefits from intelligence (writing code, analyzing requirements, reviewing quality). This separation means SKILL.md files become simple recipes rather than complex process manuals.
+
+### Why SQLite?
+Atomic transactions for state consistency. Queryable for status dashboards. WAL mode for concurrent read/write across sessions. Single file for portability. Zero configuration. The DB is the coordination mechanism between sessions and the data source for Ratchet Studio.
+
+### Why living backlog?
+In real agile, the backlog grows continuously — new requirements, bugs, acceptance gaps, technical debt. The old model (one-time Story → fixed Spec) doesn't support this. The living backlog means any source (user, agent, review, acceptance) can add items, and sprints continuously consume them.
+
 ## Future Directions
 
-- Review UI: browser-based spec review for large specs (>20 constraints)
-- Desktop app: Tauri-based UI for non-technical users
-- Multi-agent teams: Claude Code Agent Teams for parallel WP execution
+- **Ratchet Studio**: Visual DAG, backlog board, agent drill-down, real-time monitoring
+- Multi-domain role registries: data science, design, research
+- Role memory: perspectives learn from past projects
+- Direct role interaction: users converse with individual role agents
 - Cross-project learning: global insights from accumulated review logs
-- Multi-domain role registries: data science, design, research domains with specialized roles
-- Role memory: perspectives learn from past projects (e.g., "this team always neglects logging")
-- Direct role interaction: users converse with individual role agents for deep-dive discussions
+- Ratchet as a service: remote execution with webhook notifications

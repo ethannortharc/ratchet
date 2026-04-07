@@ -1,13 +1,13 @@
 ---
 name: story
-description: "Phase 1: Multi-perspective alignment through role-based story generation. Spawns parallel perspective agents (end-user, developer, DevOps, security, QA), synthesizes via PM agent, confirms with user showing all perspectives, then Manager agent sequences into specs. Auto-transitions to spec phase on confirmation."
+description: "Continuous multi-perspective alignment process. Spawns parallel perspective agents, synthesizes via PM agent, confirms with user, then Manager sequences into sprints. Can be invoked at ANY time — not just project start. Python tools handle all state management."
 ---
 
-# Story — Multi-Perspective Alignment (Phase 1)
+# Story — Multi-Perspective Alignment (Continuous Process)
 
 ## Overview
 
-Story is Phase 1 — before spec, before code, before constraints. It answers "what are we building, for whom, and from whose perspective?" through role-based analysis and PM synthesis.
+Story answers "what are we building, for whom, and from whose perspective?" through role-based analysis and PM synthesis.
 
 ```
 User: /ratchet:story "Build a REST API for task management"
@@ -24,6 +24,41 @@ Agent: Manager agent plans sprints (each spec = one sprint)
 ```
 
 The spec phase then reads the PM synthesis and auto-extracts machine-verifiable constraints. Most of the hard alignment work happens here in story, not in spec.
+
+---
+
+## Story is Continuous
+
+Story is NOT a one-time phase. It can be invoked at any point in a project's lifecycle:
+
+- **Project start** — Full story process with all perspectives
+- **New feature** — Mini story (2-3 relevant perspectives only)
+- **Mid-sprint feedback** — Story update → cascades to backlog
+- **Post-review** — Review gaps become new story items
+- **Bug triage** — Determine if a bug needs perspective analysis or goes straight to backlog
+
+All story outputs flow into the backlog via Python tools. The backlog is the single interface between human track (story) and agent track (sprints).
+
+### Mini Story
+
+For small feature additions or focused changes, run a lightweight story:
+
+1. Identify 2-3 most relevant perspectives (skip the full role derivation)
+2. Spawn only those perspective agents
+3. PM synthesizes the subset
+4. Add results directly to backlog: `python tools/ratchet.py backlog add ...`
+
+No sprint planning needed — items join the existing backlog for the next sprint.
+
+### Direct Entry
+
+Some items skip story entirely:
+
+- **Bug reports** → `python tools/ratchet.py backlog add --type=bug --priority=must "description"`
+- **Small tweaks** → `python tools/ratchet.py backlog add --type=feature "description"`
+- **Technical debt** → `python tools/ratchet.py backlog add --type=debt "description"`
+
+No perspectives needed. Just add to backlog and let the next sprint pick it up.
 
 ---
 
@@ -116,14 +151,13 @@ For domain-specific projects, research the domain BEFORE deriving roles:
 
 ### 1.5 Register Intent
 
-If this is a new intent (not an update):
+If this is a new intent (not an update), initialize the project via Python tools:
 
-```
-Intent ID? [auto-generated from name, user can override]
-Workspace? [current dir / create new / custom path]
+```bash
+python tools/ratchet.py init "{project_name}" --mode {greenfield|existing}
 ```
 
-Register in `~/.config/ratchet/state.yaml` with status: `draft`.
+This creates the project in the DB, sets status to `draft`, and returns the project ID.
 
 ---
 
@@ -207,7 +241,7 @@ Add, remove, or adjust any roles?
 
 ### 2.5 Save Active Roles
 
-Write `.ratchet/story/roles.yaml`:
+Write `.ratchet/story/roles.yaml` — this is a file artifact, not DB state:
 
 ```yaml
 derived_from: "intent analysis"  # NOT "registry filter"
@@ -247,6 +281,8 @@ excluded_roles:
   - id: security
     reason: "No network, no user data, no authentication"
 ```
+
+Note: roles.yaml is a file artifact consumed by acceptance review agents later. It is NOT stored in the DB — the DB tracks sprint/backlog state, not creative artifacts.
 
 ---
 
@@ -417,7 +453,21 @@ From the PM synthesis output, create:
 - `.ratchet/story/scenarios.md` — extracted comprehensive scenario table
 - `.ratchet/story/decisions.md` — decisions log with role tags
 
-### 4.3 Generate Visual Artifacts
+### 4.3 Add Requirements to Backlog
+
+After PM synthesis is saved, add each requirement to the backlog via Python tools:
+
+```bash
+# For each requirement in the synthesis:
+python tools/ratchet.py backlog add "R-01: Rate limiting on all endpoints" --type=feature --priority=must --source=story
+python tools/ratchet.py backlog add "R-02: CLI help text for all commands" --type=feature --priority=must --source=story
+python tools/ratchet.py backlog add "R-03: Dark mode support" --type=feature --priority=should --source=story
+# ... for each requirement
+```
+
+The backlog in the DB is now the source of truth for what needs to be built. The synthesis.md file remains as the narrative artifact for human reading and acceptance review.
+
+### 4.4 Generate Visual Artifacts
 
 For projects with user-facing interface:
 
@@ -652,7 +702,19 @@ Agent(
 
 Save to `.ratchet/story/sprint-plan.md`.
 
-### 7.3 Present to User
+### 7.3 Register Sprints in DB
+
+After the Manager agent produces the sprint plan, register each sprint via Python tools:
+
+```bash
+# For each sprint in the plan:
+python tools/ratchet.py sprint create "Sprint 1: Foundation" --backlog-items="R-01,R-03,R-07" --points=15
+python tools/ratchet.py sprint create "Sprint 2: Polish" --backlog-items="R-02,R-04" --points=12 --depends-on=1
+```
+
+This creates sprint records in the DB with their backlog item assignments and dependency graph.
+
+### 7.4 Present to User
 
 **Single sprint:**
 ```
@@ -682,7 +744,7 @@ Sprint plan:
 OK with this plan? Want to adjust?
 ```
 
-### 7.4 Create Sprint Structure
+### 7.5 Create Sprint Structure
 
 **Single sprint** — flat structure, no sprints directory:
 
@@ -749,10 +811,13 @@ Ready to start Sprint 1?
 
 ### 8.2 Transition to Spec (= Start Sprint 1)
 
-On confirmation:
-1. Mark story phase as complete in state
-2. **Auto-invoke the spec skill** for Sprint 1
-3. Spec phase reads sprint backlog items from synthesis.md + sprint-plan.md
+On confirmation, begin Sprint 1 via Python tools:
+
+```bash
+python tools/ratchet.py step start {sprint_id} spec
+```
+
+Then **auto-invoke the spec skill** for Sprint 1. Spec phase reads sprint backlog items from synthesis.md + sprint-plan.md.
 
 For single-sprint projects, the spec covers the entire backlog.
 For multi-sprint projects, the spec covers Sprint 1's backlog items only.
@@ -783,8 +848,9 @@ Story supports updates after initial creation. When the user describes changes t
 3. Re-run affected perspective agents if the change is significant enough
 4. Re-run PM synthesis on the affected area (not full re-synthesis for small changes)
 5. Show what changed, including any new conflict resolutions
-6. Cascade: story update → spec re-derivation → test update → execution → full verification
-7. Update decision log with new decisions
+6. Add new/updated requirements to backlog: `python tools/ratchet.py backlog add ...` or `python tools/ratchet.py backlog update ...`
+7. Cascade: story update → spec re-derivation → test update → execution → full verification
+8. Update decision log with new decisions
 
 ```
 User: "Add rate limiting to the API"
@@ -794,10 +860,12 @@ Agent detects: story-level change, impacts Security + DevOps + Developer perspec
 2. Re-run DevOps perspective agent on operational impact
 3. PM re-synthesizes affected requirements
 4. Update synthesis.md, scenarios.md, decisions.md
-5. Cascade to spec (re-derive affected constraints)
+5. Add new requirements to backlog:
+   python tools/ratchet.py backlog add "Rate limiting on all production endpoints" --type=feature --priority=must --source=story_update
+6. Cascade to spec (re-derive affected constraints)
 ```
 
-For minor updates (tweaking a scenario, adjusting a persona detail), skip re-running perspective agents — just update the artifacts directly.
+For minor updates (tweaking a scenario, adjusting a persona detail), skip re-running perspective agents — just update the artifacts directly and add to backlog.
 
 ---
 
@@ -820,4 +888,5 @@ For minor updates (tweaking a scenario, adjusting a persona detail), skip re-run
 15. **Complexity estimation.** Always estimate story points.
 16. **Manager always runs.** Sprint planning is structural, not triggered by a threshold. The Manager decides how many sprints — even if the answer is "one."
 17. **Spec = Sprint.** Each spec executes one sprint's worth of backlog items. Story output is the product backlog; specs are sprints that consume it.
-17. **Sonnet for perspectives, Opus for synthesis.** Individual role agents run on Sonnet. PM and Manager run on Opus.
+18. **Sonnet for perspectives, Opus for synthesis.** Individual role agents run on Sonnet. PM and Manager run on Opus.
+19. **Python tools for state, files for content.** Use `python tools/ratchet.py` for all state management (init, backlog, sprints). Use .md/.yaml files for creative artifacts (perspectives, synthesis, roles).

@@ -1,12 +1,12 @@
 {
   "name": "ratchet",
-  "version": "5.1.0",
-  "description": "Intent-driven autonomous execution. Multi-perspective story alignment (role-based perspective agents + PM synthesis), then spec, then autonomous iteration. Human provides direction (story/spec) and taste (review). Agent handles everything else — role agents, subagent architecture, multi-level verification, ratchet optimization.",
+  "version": "6.0.0",
+  "description": "Multi-agent collaboration platform with agile process management. Python tools handle deterministic process control (state, gates, DB). Claude Code agents handle creative work. Dual-track: Story (continuous) ↔ Backlog ↔ Sprint (autonomous).",
   "author": {
     "name": "Ethan"
   },
   "repository": "https://github.com/ethannortharc/ratchet",
   "license": "MIT",
-  "keywords": ["intent", "story", "spec", "verification", "ratchet", "autonomous", "subagent", "workspace", "coverage", "proof", "roles", "perspectives"],
+  "keywords": ["intent", "story", "spec", "verification", "ratchet", "autonomous", "subagent", "workspace", "coverage", "proof", "roles", "perspectives", "sqlite", "backlog", "sprint", "regression", "dag", "multi-session"],
   "skills": "./skills/"
 }

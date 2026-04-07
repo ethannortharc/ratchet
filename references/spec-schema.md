@@ -417,7 +417,7 @@ Rules:
 
 ## Sprint Structure (multi-sprint projects)
 
-### Sprints in state.yaml
+### Sprints in state.yaml (Replaced by ratchet.db in v6. State is now managed via `python tools/ratchet.py`.)
 
 ```yaml
 intents:
@@ -524,7 +524,9 @@ ratchet_state:
 1. [manual verification step]
 ```
 
-## Global State Registry (~/.config/ratchet/state.yaml)
+## Global State Registry (~/.config/ratchet/state.yaml) — Replaced by ratchet.db in v6
+
+> **Note (v6):** Global state is now stored in `ratchet.db` (per-project, at `.ratchet/ratchet.db`), not in `~/.config/ratchet/state.yaml`. The schema below is retained as reference for what data exists. State is managed via `python tools/ratchet.py`.
 
 ```yaml
 intents:
